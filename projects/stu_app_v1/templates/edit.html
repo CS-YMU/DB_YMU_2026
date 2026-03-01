@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑学生 - 学生信息管理系统</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome 6 图标库 -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- 自定义样式 -->
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px 0;
+        }
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .form-header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+        }
+        .form-header h2 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .form-header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .form-body {
+            padding: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .form-label i {
+            color: #f5576c;
+            margin-right: 8px;
+            width: 20px;
+        }
+        .form-control, .form-select {
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            padding: 12px 15px;
+            transition: all 0.3s;
+            font-size: 15px;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #f5576c;
+            box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.1);
+            outline: none;
+        }
+        .form-control[readonly] {
+            background-color: #f8f9fa;
+            cursor: not-allowed;
+        }
+        .btn-submit {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            width: 100%;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(245, 87, 108, 0.3);
+        }
+        .btn-back {
+            background: white;
+            color: #f5576c;
+            border: 2px solid #f5576c;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .btn-back:hover {
+            background: #f5576c;
+            color: white;
+            text-decoration: none;
+        }
+        .student-id-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+        .student-id-badge i {
+            margin-right: 5px;
+        }
+        .alert {
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <div class="form-header">
+                <h2><i class="fas fa-edit me-2"></i>编辑学生信息</h2>
+                <p>修改学生的基本信息，带 <span class="text-warning">*</span> 为必填项</p>
+            </div>
+            
+            <div class="form-body">
+                <!-- 消息提示区域 -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show" role="alert">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' }} me-2"></i>
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                <!-- 显示学号标签 -->
+                <div class="student-id-badge">
+                    <i class="fas fa-id-card"></i> 学号：{{ student.student_id }}
+                </div>
+                
+                <form method="POST" action="{{ url_for('edit_student', student_id=student.student_id) }}" id="studentForm">
+                    <!-- 学号（只读） -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-id-card"></i>学号
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               value="{{ student.student_id }}" 
+                               readonly 
+                               disabled>
+                        <div class="form-text">学号不可修改</div>
+                    </div>
+                    
+                    <!-- 姓名 -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-user"></i>姓名 <span class="required-star">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="name" 
+                               name="name" 
+                               value="{{ student.name }}"
+                               required 
+                               maxlength="50"
+                               placeholder="请输入学生姓名">
+                    </div>
+                    
+                    <!-- 性别 -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-venus-mars"></i>性别 <span class="required-star">*</span>
+                        </label>
+                        <select class="form-select" id="gender" name="gender" required>
+                            <option value="男" {% if student.gender == '男' %}selected{% endif %}>男</option>
+                            <option value="女" {% if student.gender == '女' %}selected{% endif %}>女</option>
+                            <option value="其他" {% if student.gender == '其他' %}selected{% endif %}>其他</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 年龄 -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-calendar-alt"></i>年龄
+                        </label>
+                        <input type="number" 
+                               class="form-control" 
+                               id="age" 
+                               name="age" 
+                               value="{{ student.age if student.age else '' }}"
+                               min="1" 
+                               max="150"
+                               placeholder="请输入年龄 (1-150)">
+                    </div>
+                    
+                    <!-- 专业 -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-book"></i>专业
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="major" 
+                               name="major" 
+                               value="{{ student.major if student.major else '' }}"
+                               maxlength="100"
+                               placeholder="请输入专业名称">
+                    </div>
+                    
+                    <!-- 电话 -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-phone"></i>电话
+                        </label>
+                        <input type="tel" 
+                               class="form-control" 
+                               id="phone" 
+                               name="phone" 
+                               value="{{ student.phone if student.phone else '' }}"
+                               maxlength="20"
+                               placeholder="请输入电话号码">
+                    </div>
+                    
+                    <!-- 按钮组 -->
+                    <div class="row mt-4">
+                        <div class="col-md-6 mb-2">
+                            <button type="submit" class="btn-submit">
+                                <i class="fas fa-save"></i> 更新信息
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{{ url_for('index') }}" class="btn-back">
+                                <i class="fas fa-arrow-left"></i> 返回列表
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS 和依赖 -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

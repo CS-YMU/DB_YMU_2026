@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>添加学生 - 学生信息管理系统</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome 6 图标库 -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- 自定义样式 -->
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px 0;
+        }
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .form-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+        }
+        .form-header h2 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .form-header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .form-body {
+            padding: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .form-label i {
+            color: #667eea;
+            margin-right: 8px;
+            width: 20px;
+        }
+        .form-control, .form-select {
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            padding: 12px 15px;
+            transition: all 0.3s;
+            font-size: 15px;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            outline: none;
+        }
+        .form-control.is-invalid, .form-select.is-invalid {
+            border-color: #dc3545;
+        }
+        .invalid-feedback {
+            color: #dc3545;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+        .btn-submit {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            width: 100%;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+        .btn-back {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .btn-back:hover {
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+        }
+        .required-star {
+            color: #dc3545;
+            margin-left: 3px;
+        }
+        .form-text {
+            color: #6c757d;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .alert {
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <div class="form-header">
+                <h2><i class="fas fa-user-graduate me-2"></i>添加新学生</h2>
+                <p>请输入学生的基本信息，带 <span class="text-warning">*</span> 为必填项</p>
+            </div>
+            
+            <div class="form-body">
+                <!-- 消息提示区域 -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show" role="alert">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' }} me-2"></i>
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                <form method="POST" action="{{ url_for('add_student') }}" id="studentForm" onsubmit="return validateForm()">
+                    <!-- 学号 -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-id-card"></i>学号 <span class="required-star">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="student_id" 
+                               name="student_id" 
+                               required 
+                               maxlength="20"
+                               placeholder="请输入学号，如：2024001"
+                               oninput="validateStudentId(this)">
+                        <div class="invalid-feedback" id="student_id_error"></div>
+                        <div class="form-text">学号必须是唯一的，不能重复</div>
+                    </div>
+                    
+                    <!-- 姓名 -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-user"></i>姓名 <span class="required-star">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="name" 
+                               name="name" 
+                               required 
+                               maxlength="50"
+                               placeholder="请输入学生姓名"
+                               oninput="validateName(this)">
+                        <div class="invalid-feedback" id="name_error"></div>
+                    </div>
+                    
+                    <!-- 性别 -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-venus-mars"></i>性别 <span class="required-star">*</span>
+                        </label>
+                        <select class="form-select" id="gender" name="gender" required onchange="validateGender(this)">
+                            <option value="">请选择性别</option>
+                            <option value="男">男</option>
+                            <option value="女">女</option>
+                            <option value="其他">其他</option>
+                        </select>
+                        <div class="invalid-feedback" id="gender_error"></div>
+                    </div>
+                    
+                    <!-- 年龄 -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-calendar-alt"></i>年龄
+                        </label>
+                        <input type="number" 
+                               class="form-control" 
+                               id="age" 
+                               name="age" 
+                               min="1" 
+                               max="150"
+                               placeholder="请输入年龄 (1-150)"
+                               oninput="validateAge(this)">
+                        <div class="invalid-feedback" id="age_error"></div>
+                        <div class="form-text">年龄范围：1-150岁</div>
+                    </div>
+                    
+                    <!-- 专业 -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-book"></i>专业
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="major" 
+                               name="major" 
+                               maxlength="100"
+                               placeholder="请输入专业名称"
+                               oninput="validateMajor(this)">
+                        <div class="invalid-feedback" id="major_error"></div>
+                    </div>
+                    
+                    <!-- 电话 -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-phone"></i>电话
+                        </label>
+                        <input type="tel" 
+                               class="form-control" 
+                               id="phone" 
+                               name="phone" 
+                               maxlength="20"
+                               placeholder="请输入电话号码"
+                               oninput="validatePhone(this)">
+                        <div class="invalid-feedback" id="phone_error"></div>
+                        <div class="form-text">格式：手机号或固定电话</div>
+                    </div>
+                    
+                    <!-- 按钮组 -->
+                    <div class="row mt-4">
+                        <div class="col-md-6 mb-2">
+                            <button type="submit" class="btn-submit">
+                                <i class="fas fa-save"></i> 保存学生信息
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{{ url_for('index') }}" class="btn-back">
+                                <i class="fas fa-arrow-left"></i> 返回列表
+                            </a>
+                        </div>
+                    </div>
+                </form>
+                
+                <!-- 快速填入示例数据（可选） -->
+                <div class="text-center mt-3">
+                    <button type="button" class="btn btn-link" onclick="fillSampleData()">
+                        <i class="fas fa-magic"></i> 填入示例数据
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS 和依赖 -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // 表单验证函数
+        function validateForm() {
+            let isValid = true;
+            
+            // 验证学号
+            const studentId = document.getElementById('student_id');
+            if (!studentId.value.trim()) {
+                showError(studentId, '学号不能为空');
+                isValid = false;
+            } else if (!/^\w+$/.test(studentId.value)) {
+                showError(studentId, '学号只能包含字母、数字和下划线');
+                isValid = false;
+            } else {
+                clearError(studentId);
+            }
+            
+            // 验证姓名
+            const name = document.getElementById('name');
+            if (!name.value.trim()) {
+                showError(name, '姓名不能为空');
+                isValid = false;
+            } else if (name.value.length < 2) {
+                showError(name, '姓名至少需要2个字符');
+                isValid = false;
+            } else {
+                clearError(name);
+            }
+            
+            // 验证性别
+            const gender = document.getElementById('gender');
+            if (!gender.value) {
+                showError(gender, '请选择性别');
+                isValid = false;
+            } else {
+                clearError(gender);
+            }
+            
+            // 验证年龄（如果填写）
+            const age = document.getElementById('age');
+            if (age.value) {
+                const ageNum = parseInt(age.value);
+                if (isNaN(ageNum) || ageNum < 1 || ageNum > 150) {
+                    showError(age, '年龄必须在1-150之间');
+                    isValid = false;
+                } else {
+                    clearError(age);
+                }
+            }
+            
+            // 验证电话（如果填写）
+            const phone = document.getElementById('phone');
+            if (phone.value && !validatePhoneNumber(phone.value)) {
+                showError(phone, '请输入有效的电话号码');
+                isValid = false;
+            } else {
+                clearError(phone);
+            }
+            
+            return isValid;
+        }
+        
+        // 电话号码验证
+        function validatePhoneNumber(phone) {
+            const phoneRegex = /^[\d\s\-+()]{7,20}$/;
+            return phoneRegex.test(phone);
+        }
+        
+        // 显示错误信息
+        function showError(element, message) {
+            element.classList.add('is-invalid');
+            const errorDiv = document.getElementById(element.id + '_error');
+            if (errorDiv) {
+                errorDiv.textContent = message;
+            }
+        }
+        
+        // 清除错误信息
+        function clearError(element) {
+            element.classList.remove('is-invalid');
+            const errorDiv = document.getElementById(element.id + '_error');
+            if (errorDiv) {
+                errorDiv.textContent = '';
+            }
+        }
+        
+        // 各个字段的实时验证函数
+        function validateStudentId(element) {
+            if (!element.value.trim()) {
+                showError(element, '学号不能为空');
+            } else if (!/^\w+$/.test(element.value)) {
+                showError(element, '学号只能包含字母、数字和下划线');
+            } else {
+                clearError(element);
+            }
+        }
+        
+        function validateName(element) {
+            if (!element.value.trim()) {
+                showError(element, '姓名不能为空');
+            } else if (element.value.length < 2) {
+                showError(element, '姓名至少需要2个字符');
+            } else {
+                clearError(element);
+            }
+        }
+        
+        function validateGender(element) {
+            if (!element.value) {
+                showError(element, '请选择性别');
+            } else {
+                clearError(element);
+            }
+        }
+        
+        function validateAge(element) {
+            if (element.value) {
+                const ageNum = parseInt(element.value);
+                if (isNaN(ageNum) || ageNum < 1 || ageNum > 150) {
+                    showError(element, '年龄必须在1-150之间');
+                } else {
+                    clearError(element);
+                }
+            } else {
+                clearError(element);
+            }
+        }
+        
+        function validateMajor(element) {
+            // 专业是可选的，但如果填写，长度至少2个字符
+            if (element.value && element.value.length < 2) {
+                showError(element, '专业名称至少需要2个字符');
+            } else {
+                clearError(element);
+            }
+        }
+        
+        function validatePhone(element) {
+            if (element.value && !validatePhoneNumber(element.value)) {
+                showError(element, '请输入有效的电话号码');
+            } else {
+                clearError(element);
+            }
+        }
+        
+        // 填入示例数据（方便测试）
+        function fillSampleData() {
+            document.getElementById('student_id').value = '2024' + Math.floor(Math.random() * 1000);
+            document.getElementById('name').value = '张' + ['三', '四', '五', '六'][Math.floor(Math.random() * 4)];
+            document.getElementById('gender').value = ['男', '女'][Math.floor(Math.random() * 2)];
+            document.getElementById('age').value = 18 + Math.floor(Math.random() * 5);
+            document.getElementById('major').value = ['计算机科学', '软件工程', '人工智能', '数据科学'][Math.floor(Math.random() * 4)];
+            document.getElementById('phone').value = '138' + Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
+            
+            // 清除所有错误提示
+            document.querySelectorAll('.form-control, .form-select').forEach(element => {
+                clearError(element);
+            });
+        }
+        
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 为所有输入框添加失去焦点验证
+            document.querySelectorAll('.form-control, .form-select').forEach(element => {
+                element.addEventListener('blur', function() {
+                    const validateFunction = 'validate' + this.id.charAt(0).toUpperCase() + this.id.slice(1);
+                    if (window[validateFunction]) {
+                        window[validateFunction](this);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
