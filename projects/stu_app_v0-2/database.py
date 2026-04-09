@@ -95,11 +95,11 @@ class Database:
         WHERE student_id=%s
         """
         try:
-            # self.cursor.execute(query, (
-            #     update_data['name'], update_data['gender'], 
-            #     update_data['age'], update_data['major'], 
-            #     update_data['phone'], student_id
-            # ))
+            self.cursor.execute(query, (
+                update_data['name'], update_data['gender'], 
+                update_data['age'], update_data['major'], 
+                update_data['phone'], student_id
+            ))
             self.connection.commit()
             print(f"✅ 学生信息更新成功")
             return True
