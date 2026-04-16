@@ -408,6 +408,52 @@ class Database:
             print(f"❌ 查询失败：{e}")
             return None
 
+    def get_course_max_score(self, course_id):
+        """获取某课程的最高分学生信息"""
+        query = """
+        SELECT sc.score, s.student_id, s.name, s.gender, s.major, sc.semester
+        FROM sc
+        LEFT JOIN students s ON sc.student_id = s.student_id
+        WHERE sc.course_id = %s AND sc.score IS NOT NULL
+        ORDER BY sc.score DESC
+        LIMIT 1
+        """
+        try:
+            self.cursor.execute(query, (course_id,))
+            result = self.cursor.fetchone()
+            if result:
+                print(f"🏆 课程 {course_id} 最高分：{result['name']}({result['student_id']}) - {result['score']}分（{result['semester']}）")
+                return result
+            else:
+                print(f"📊 课程 {course_id} 暂无成绩记录")
+                return None
+        except Error as e:
+            print(f"❌ 查询失败：{e}")
+            return None
+
+    def get_course_min_score(self, course_id):
+        """获取某课程的最低分学生信息"""
+        query = """
+        SELECT sc.score, s.student_id, s.name, s.gender, s.major, sc.semester
+        FROM sc
+        LEFT JOIN students s ON sc.student_id = s.student_id
+        WHERE sc.course_id = %s AND sc.score IS NOT NULL
+        ORDER BY sc.score ASC
+        LIMIT 1
+        """
+        try:
+            self.cursor.execute(query, (course_id,))
+            result = self.cursor.fetchone()
+            if result:
+                print(f"📉 课程 {course_id} 最低分：{result['name']}({result['student_id']}) - {result['score']}分（{result['semester']}）")
+                return result
+            else:
+                print(f"📊 课程 {course_id} 暂无成绩记录")
+                return None
+        except Error as e:
+            print(f"❌ 查询失败：{e}")
+            return None
+
     def close(self):
         """关闭连接"""
         if self.cursor:
