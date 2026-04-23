@@ -49,9 +49,11 @@ class Database:
         CREATE TABLE IF NOT EXISTS course (
             course_id VARCHAR(20) PRIMARY KEY,
             course_name VARCHAR(100) NOT NULL,
-            teacher_name VARCHAR(50) NOT NULL,
+            teacher_id VARCHAR(20) NOT NULL,
             credit DECIMAL(3,1) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT fk_course_teacher FOREIGN KEY (teacher_id)
+                REFERENCES teacher(teacher_id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         """
 
@@ -74,8 +76,23 @@ class Database:
             CONSTRAINT uk_student_course_semester UNIQUE (student_id, course_id, semester)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         """
+
+        # 创建教师表
+        create_teacher_query = """
+        CREATE TABLE IF NOT EXISTS teacher (
+            teacher_id VARCHAR(20) PRIMARY KEY,
+            name VARCHAR(50) NOT NULL,
+            gender ENUM('男', '女', '其他') NOT NULL,
+            age INT CHECK (age > 0 AND age < 150),
+            title VARCHAR(20) NOT NULL COMMENT '职称：教授/副教授/讲师/助教',
+            phone VARCHAR(20),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        """
         try:
             self.cursor.execute(create_students_query)
+            self.cursor.execute(create_teacher_query)
             self.cursor.execute(create_course_query)
             self.cursor.execute(create_sc_query)
             self.connection.commit()
@@ -179,13 +196,13 @@ class Database:
     def add_course(self, course):
         """添加课程"""
         query = """
-        INSERT INTO course (course_id, course_name, teacher_name, credit)
+        INSERT INTO course (course_id, course_name, teacher_id, credit)
         VALUES (%s, %s, %s, %s)
         """
         try:
             self.cursor.execute(query, (
                 course.course_id, course.course_name,
-                course.teacher_name, course.credit
+                course.teacher_id, course.credit
             ))
             self.connection.commit()
             print(f"✅ 课程 {course.course_name} 添加成功")
@@ -195,8 +212,13 @@ class Database:
             return False
 
     def get_all_courses(self):
-        """获取所有课程"""
-        query = "SELECT * FROM course ORDER BY course_id"
+        """获取所有课程（关联教师信息）"""
+        query = """
+        SELECT c.*, t.name as teacher_name, t.title as teacher_title
+        FROM course c
+        LEFT JOIN teacher t ON c.teacher_id = t.teacher_id
+        ORDER BY c.course_id
+        """
         try:
             self.cursor.execute(query)
             return self.cursor.fetchall()
@@ -207,9 +229,11 @@ class Database:
     def search_course(self, keyword):
         """搜索课程（支持课程号、课程名模糊查询）"""
         query = """
-        SELECT * FROM course
-        WHERE course_id LIKE %s OR course_name LIKE %s
-        ORDER BY course_id
+        SELECT c.*, t.name as teacher_name, t.title as teacher_title
+        FROM course c
+        LEFT JOIN teacher t ON c.teacher_id = t.teacher_id
+        WHERE c.course_id LIKE %s OR c.course_name LIKE %s
+        ORDER BY c.course_id
         """
         pattern = f"%{keyword}%"
         try:
@@ -270,9 +294,117 @@ class Database:
 
     def get_course_by_id(self, course_id):
         """根据课程号获取课程信息"""
-        query = "SELECT * FROM course WHERE course_id = %s"
+        query = """
+        SELECT c.*, t.name as teacher_name, t.title as teacher_title
+        FROM course c
+        LEFT JOIN teacher t ON c.teacher_id = t.teacher_id
+        WHERE c.course_id = %s
+        """
         try:
             self.cursor.execute(query, (course_id,))
+            return self.cursor.fetchone()
+        except Error as e:
+            print(f"❌ 查询失败：{e}")
+            return None
+
+    # ==================== 选课相关操作 ====================
+
+    # ==================== 教师相关操作 ====================
+
+    def add_teacher(self, teacher):
+        """添加教师"""
+        query = """
+        INSERT INTO teacher (teacher_id, name, gender, age, title, phone)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """
+        try:
+            self.cursor.execute(query, (
+                teacher.teacher_id, teacher.name, teacher.gender,
+                teacher.age, teacher.title, teacher.phone
+            ))
+            self.connection.commit()
+            print(f"✅ 教师 {teacher.name} 添加成功")
+            return True
+        except Error as e:
+            print(f"❌ 添加失败：{e}")
+            return False
+
+    def get_all_teachers(self):
+        """获取所有教师"""
+        query = "SELECT * FROM teacher ORDER BY teacher_id"
+        try:
+            self.cursor.execute(query)
+            return self.cursor.fetchall()
+        except Error as e:
+            print(f"❌ 查询失败：{e}")
+            return []
+
+    def search_teacher(self, keyword):
+        """搜索教师（支持教师号、姓名模糊查询）"""
+        query = """
+        SELECT * FROM teacher
+        WHERE teacher_id LIKE %s OR name LIKE %s
+        ORDER BY teacher_id
+        """
+        pattern = f"%{keyword}%"
+        try:
+            self.cursor.execute(query, (pattern, pattern))
+            return self.cursor.fetchall()
+        except Error as e:
+            print(f"❌ 搜索失败：{e}")
+            return []
+
+    def update_teacher(self, teacher_id, update_data):
+        """更新教师信息"""
+        query = """
+        UPDATE teacher
+        SET name=%s, gender=%s, age=%s, title=%s, phone=%s
+        WHERE teacher_id=%s
+        """
+        try:
+            self.cursor.execute(query, (
+                update_data['name'], update_data['gender'],
+                int(update_data['age']), update_data['title'],
+                update_data['phone'], teacher_id
+            ))
+            self.connection.commit()
+            print(f"✅ 教师信息更新成功")
+            return True
+        except Error as e:
+            print(f"❌ 更新失败：{e}")
+            return False
+
+    def delete_teacher(self, teacher_id):
+        """删除教师"""
+        query = "DELETE FROM teacher WHERE teacher_id = %s"
+        try:
+            self.cursor.execute(query, (teacher_id,))
+            self.connection.commit()
+            if self.cursor.rowcount > 0:
+                print(f"✅ 教师删除成功")
+                return True
+            else:
+                print(f"❌ 教师编号 {teacher_id} 不存在")
+                return False
+        except Error as e:
+            print(f"❌ 删除失败：{e}")
+            return False
+
+    def teacher_exists(self, teacher_id):
+        """检查教师是否存在"""
+        query = "SELECT 1 FROM teacher WHERE teacher_id = %s"
+        try:
+            self.cursor.execute(query, (teacher_id,))
+            return self.cursor.fetchone() is not None
+        except Error as e:
+            print(f"❌ 查询失败：{e}")
+            return False
+
+    def get_teacher_by_id(self, teacher_id):
+        """根据教师号获取教师信息"""
+        query = "SELECT * FROM teacher WHERE teacher_id = %s"
+        try:
+            self.cursor.execute(query, (teacher_id,))
             return self.cursor.fetchone()
         except Error as e:
             print(f"❌ 查询失败：{e}")
