@@ -19,20 +19,54 @@ def init_data():
         print("数据库连接失败")
         return
 
-    # 先删除旧表（如果存在），按依赖顺序反向删除
-    print("\n--- 重建数据表 ---")
+    # 先清理所有高级数据库对象，再删除基础表
+    # 否则视图/触发器引用已删除的表会导致 Workbench 报错 "Tables could not be fetched"
+    print("\n--- 清理高级数据库对象 ---")
     try:
-        db.cursor.execute("DROP TABLE IF EXISTS sc")
+        db.cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+
+        # 删除视图
+        db.cursor.execute("DROP VIEW IF EXISTS v_student_scores")
+        db.cursor.execute("DROP VIEW IF EXISTS v_course_stats")
+        db.cursor.execute("DROP VIEW IF EXISTS v_student_credits")
+
+        # 删除触发器
+        db.cursor.execute("DROP TRIGGER IF EXISTS trg_before_sc_score_check")
+        db.cursor.execute("DROP TRIGGER IF EXISTS trg_before_sc_score_update_check")
+        db.cursor.execute("DROP TRIGGER IF EXISTS trg_after_student_delete_log")
+        db.cursor.execute("DROP TRIGGER IF EXISTS trg_after_student_major_change_log")
+
+        # 删除存储过程
+        db.cursor.execute("DROP PROCEDURE IF EXISTS sp_student_rank")
+        db.cursor.execute("DROP PROCEDURE IF EXISTS sp_course_pass_rate")
+        db.cursor.execute("DROP PROCEDURE IF EXISTS sp_score_bonus")
+
+        # 删除函数
+        db.cursor.execute("DROP FUNCTION IF EXISTS fn_grade_level")
+        db.cursor.execute("DROP FUNCTION IF EXISTS fn_gpa")
+
+        # 删除日志表
+        db.cursor.execute("DROP TABLE IF EXISTS student_delete_log")
+        db.cursor.execute("DROP TABLE IF EXISTS major_change_log")
+
+        # 删除先修课程关系表
         db.cursor.execute("DROP TABLE IF EXISTS course_prerequisite")
+
+        # 删除基础表（按依赖顺序反向）
+        db.cursor.execute("DROP TABLE IF EXISTS sc")
         db.cursor.execute("DROP TABLE IF EXISTS course")
         db.cursor.execute("DROP TABLE IF EXISTS teacher")
         db.cursor.execute("DROP TABLE IF EXISTS students")
-        db.connection.commit()
-        print("✅ 旧表已删除")
-    except Exception as e:
-        print(f"⚠️ 删除旧表时出现警告：{e}")
 
-    # 创建表
+        db.cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+        db.connection.commit()
+        print("✅ 旧表及高级对象已清理")
+    except Exception as e:
+        print(f"❌ 清理失败：{e}")
+        db.close()
+        return
+
+    # 创建基础表
     db.create_tables()
 
     # ==================== 添加学生 ====================
@@ -75,45 +109,33 @@ def init_data():
     for c in courses:
         db.add_course(c)
 
-    # ==================== 添加先修课程关系 ====================
-    # 关系：CS102(操作系统) 需要 CS101(数据结构)
-    #       CS103(计算机网络) 需要 CS101(数据结构)
-    #       CS104(数据库原理) 需要 CS101(数据结构)
-    # 选课逻辑：必须先在第一学期通过 CS101，才能在第二学期选修 CS102/CS103/CS104
-    prerequisites = [
-        ('CS102', 'CS101'),  # 操作系统先修数据结构
-        ('CS103', 'CS101'),  # 计算机网络先修数据结构
-        ('CS104', 'CS101'),  # 数据库原理先修数据结构
-    ]
-
-    print("\n--- 添加先修课程关系 ---")
-    from models import CoursePrerequisite
-    for course_id, prereq_id in prerequisites:
-        cp = CoursePrerequisite(course_id, prereq_id)
-        db.add_prerequisite(cp)
+    # ==================== 设置先修课程关系 ====================
+    print("\n--- 设置先修课程关系 ---")
+    # CS102(操作系统) 的先修课程是 CS101(数据结构)
+    db.add_prerequisite('CS102', 'CS101')
+    # CS103(计算机网络) 的先修课程是 CS101(数据结构)
+    db.add_prerequisite('CS103', 'CS101')
+    # CS104(数据库原理) 的先修课程是 CS102(操作系统)
+    db.add_prerequisite('CS104', 'CS102')
 
     # ==================== 添加选课记录 ====================
-    # 注意：必须先通过 CS101（成绩>=60），才能选修 CS102/CS103/CS104
     selections = [
-        # 第一学期：所有人都先修 CS101（无先修要求）
         SC('2024001', 'CS101', '2024-1'),
+        SC('2024001', 'CS102', '2024-1'),
+        SC('2024001', 'MATH101', '2024-1'),
         SC('2024002', 'CS101', '2024-1'),
-        SC('2024003', 'CS101', '2024-1'),
+        SC('2024002', 'CS104', '2024-1'),
+        SC('2024002', 'EN101', '2024-1'),
+        SC('2024003', 'CS102', '2024-1'),
+        SC('2024003', 'CS103', '2024-1'),
         SC('2024004', 'CS101', '2024-1'),
-        SC('2024001', 'MATH101', '2024-1'),  # 无先修要求
-        SC('2024002', 'EN101', '2024-1'),    # 无先修要求
-        SC('2024003', 'CS103', '2024-1'),    # CS103 先修 CS101，第一学期已通过
-        SC('2024004', 'MATH101', '2024-1'),  # 无先修要求
-        # 第二学期：满足先修要求后才能选修
-        SC('2024001', 'CS102', '2024-2'),    # ✅ 2024001 已通过 CS101
-        SC('2024001', 'CS104', '2024-2'),    # ✅ 2024001 已通过 CS101
-        SC('2024002', 'CS104', '2024-2'),    # ✅ 2024002 已通过 CS101
-        SC('2024002', 'CS102', '2024-2'),    # ✅ 2024002 已通过 CS101
+        SC('2024004', 'CS104', '2024-1'),
+        SC('2024004', 'MATH101', '2024-1'),
+        # 第二学期选课
+        SC('2024001', 'CS103', '2024-2'),
+        SC('2024001', 'CS104', '2024-2'),
+        SC('2024002', 'CS102', '2024-2'),
         SC('2024002', 'MATH101', '2024-2'),
-        SC('2024003', 'CS102', '2024-2'),    # ✅ 2024003 已通过 CS101
-        SC('2024003', 'CS104', '2024-2'),    # ✅ 2024003 已通过 CS101
-        SC('2024004', 'CS104', '2024-2'),    # ✅ 2024004 已通过 CS101
-        SC('2024004', 'CS102', '2024-2'),    # ✅ 2024004 已通过 CS101
     ]
 
     print("\n--- 添加选课记录 ---")
@@ -123,25 +145,22 @@ def init_data():
     # ==================== 录入成绩 ====================
     print("\n--- 录入成绩 ---")
     score_updates = [
-        # 第一学期成绩（必须先有成绩才能满足先修条件）
         ('2024001', 'CS101', '2024-1', 85),
-        ('2024002', 'CS101', '2024-1', 92),
-        ('2024003', 'CS101', '2024-1', 78),
-        ('2024004', 'CS101', '2024-1', 91),
+        ('2024001', 'CS102', '2024-1', 90),
         ('2024001', 'MATH101', '2024-1', 78),
+        ('2024002', 'CS101', '2024-1', 92),
+        ('2024002', 'CS104', '2024-1', 88),
         ('2024002', 'EN101', '2024-1', 85),
+        ('2024003', 'CS102', '2024-1', 76),
         ('2024003', 'CS103', '2024-1', 80),
+        ('2024004', 'CS101', '2024-1', 91),
+        ('2024004', 'CS104', '2024-1', 87),
         ('2024004', 'MATH101', '2024-1', 82),
-        # 第二学期成绩（基于已通过的先修课程）
-        ('2024001', 'CS102', '2024-2', 90),
+        # 第二学期成绩
+        ('2024001', 'CS103', '2024-2', 83),
         ('2024001', 'CS104', '2024-2', 89),
-        ('2024002', 'CS104', '2024-2', 88),
         ('2024002', 'CS102', '2024-2', 90),
         ('2024002', 'MATH101', '2024-2', 75),
-        ('2024003', 'CS102', '2024-2', 76),
-        ('2024003', 'CS104', '2024-2', 83),
-        ('2024004', 'CS104', '2024-2', 87),
-        ('2024004', 'CS102', '2024-2', 79),
     ]
 
     for student_id, course_id, semester, score in score_updates:
@@ -155,7 +174,6 @@ def init_data():
     print(f"\n📚 学生总数：{len(students)}")
     print(f"📖 课程总数：{len(courses)}")
     print(f"👨‍🏫 教师总数：{len(teachers)}")
-    print(f"📝 先修课程关系数：{len(prerequisites)}")
     print(f"📝 选课记录总数：{len(selections)}")
 
     print("\n--- 各学生学分和平均成绩 ---")

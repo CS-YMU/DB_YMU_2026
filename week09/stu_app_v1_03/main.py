@@ -42,19 +42,19 @@ class StudentCourseSystem:
         print("  19. 退课")
         print("  20. 录入/修改成绩")
         print()
+        print("  【先修课程管理】")
+        print("  21. 先修课程管理")
+        print()
         print("  【成绩统计】")
-        print("  21. 查询学生总学分")
-        print("  22. 查询学生平均成绩")
+        print("  22. 查询学生总学分")
+        print("  23. 查询学生平均成绩")
         print()
         print("  【数据库对象管理】")
-        print("  23. 视图管理")
-        print("  24. 触发器管理")
-        print("  25. 存储过程管理")
-        print("  26. 函数管理")
-        print("  27. 完整性约束管理")
-        print()
-        print("  【先修课程管理】")
-        print("  28. 先修课程管理")
+        print("  24. 视图管理")
+        print("  25. 触发器管理")
+        print("  26. 存储过程管理")
+        print("  27. 函数管理")
+        print("  28. 完整性约束管理")
         print()
         print("  0. 退出系统")
         print("=" * 55)
@@ -268,24 +268,18 @@ class StudentCourseSystem:
             print(f"❌ 课程号 {course_id} 不存在")
             return
 
-        original = self.db.get_course_by_id(course_id)
-        if not original:
-            return
-
         print("请输入新的课程信息（直接回车保持原值）：")
         course_name = input("课程名：").strip()
 
-        # 教师选择
+        # 显示教师列表供选择
         teachers = self.db.get_all_teachers()
-        if not teachers:
-            print("❌ 暂无教师可选")
-            return
-        print("\n可选教师列表：")
-        print(f"\n{'教师编号':<12} {'姓名':<10} {'职称':<10}")
-        print("-" * 35)
-        for t in teachers:
-            print(f"{t['teacher_id']:<12} {t['name']:<10} {t['title']:<10}")
-        teacher_id = input("\n任课教师编号（直接回车保持原值）：").strip()
+        if teachers:
+            print("\n可选教师列表（直接回车保持原教师）：")
+            print(f"{'教师编号':<12} {'姓名':<10} {'职称':<10}")
+            print("-" * 35)
+            for t in teachers:
+                print(f"{t['teacher_id']:<12} {t['name']:<10} {t['title']:<10}")
+        teacher_id = input("请输入授课教师编号：").strip()
 
         credit = None
         while True:
@@ -306,7 +300,7 @@ class StudentCourseSystem:
             update_data['course_name'] = course_name
         if teacher_id:
             if not self.db.teacher_exists(teacher_id):
-                print("❌ 教师编号不存在，跳过教师更新")
+                print(f"❌ 教师编号 {teacher_id} 不存在，跳过该字段")
             else:
                 update_data['teacher_id'] = teacher_id
         if credit is not None:
@@ -317,6 +311,7 @@ class StudentCourseSystem:
             return
 
         # 填充原值
+        original = self.db.get_course_by_id(course_id)
         if original:
             for key in ['course_name', 'teacher_id', 'credit']:
                 if key not in update_data:
@@ -513,14 +508,6 @@ class StudentCourseSystem:
             print(f"❌ 课程号 {course_id} 不存在")
             return
 
-        # 检查先修课程要求
-        passed, failed = self.db.check_all_prerequisites_passed(student_id, course_id)
-        if not passed:
-            print(f"❌ 选修失败：学生尚未满足先修课程要求")
-            for f in failed:
-                print(f"   - {f['prerequisite_id']} {f['course_name']}（未通过）")
-            return
-
         semester = input("请输入学期（如：2024-1、2024-2）：").strip()
 
         sc_record = SC(student_id, course_id, semester)
@@ -642,6 +629,65 @@ class StudentCourseSystem:
             return
 
         self.db.get_student_average_score(student_id)
+
+    # ==================== 先修课程管理功能 ====================
+
+    def prerequisite_management_menu(self):
+        """先修课程管理子菜单"""
+        while True:
+            print("\n--- 先修课程管理 ---")
+            print("  1. 设置课程先修关系")
+            print("  2. 查看某课程的先修链")
+            print("  3. 查看所有先修关系")
+            print("  4. 删除先修关系")
+            print("  0. 返回上级菜单")
+            choice = input("请选择：").strip()
+
+            if choice == '1':
+                course_id = input("请输入课程号（需要设置先修的课程）：").strip()
+                if not self.db.course_exists(course_id):
+                    print(f"❌ 课程号 {course_id} 不存在")
+                    continue
+                prereq_id = input("请输入先修课程号：").strip()
+                if not self.db.course_exists(prereq_id):
+                    print(f"❌ 先修课程号 {prereq_id} 不存在")
+                    continue
+                if course_id == prereq_id:
+                    print("❌ 课程不能作为自己的先修课程")
+                    continue
+                self.db.add_prerequisite(course_id, prereq_id)
+            elif choice == '2':
+                course_id = input("请输入课程号：").strip()
+                if not self.db.course_exists(course_id):
+                    print(f"❌ 课程号 {course_id} 不存在")
+                    continue
+                prereqs = self.db.get_prerequisites(course_id)
+                if prereqs:
+                    print(f"\n课程 {course_id} 的先修课程：")
+                    print(f"{'先修课程号':<12} {'课程名':<20}")
+                    print("-" * 35)
+                    for p in prereqs:
+                        print(f"{p['prerequisite_id']:<12} {p['course_name']:<20}")
+                else:
+                    print(f"课程 {course_id} 暂无先修课程")
+            elif choice == '3':
+                relations = self.db.get_all_prerequisites()
+                if relations:
+                    print(f"\n{'课程号':<12} {'课程名':<20} {'先修课程号':<12} {'先修课程名':<20}")
+                    print("-" * 68)
+                    for r in relations:
+                        print(f"{r['course_id']:<12} {r['course_name']:<20} "
+                              f"{r['prerequisite_id']:<12} {r['prerequisite_name']:<20}")
+                else:
+                    print("暂无先修关系")
+            elif choice == '4':
+                course_id = input("请输入课程号：").strip()
+                prereq_id = input("请输入先修课程号：").strip()
+                self.db.delete_prerequisite(course_id, prereq_id)
+            elif choice == '0':
+                break
+            else:
+                print("❌ 无效选择")
 
     # ==================== 数据库对象管理功能（教学演示用） ====================
 
@@ -902,130 +948,6 @@ class StudentCourseSystem:
             else:
                 print("❌ 无效选择")
 
-    def prerequisite_management_menu(self):
-        """先修课程管理子菜单"""
-        while True:
-            print("\n--- 先修课程管理 ---")
-            print("  1. 添加先修课程关系")
-            print("  2. 查看课程的先修课程")
-            print("  3. 查看以某课程为先修的后续课程")
-            print("  4. 删除先修课程关系")
-            print("  5. 检查学生是否满足某课程的先修要求")
-            print("  0. 返回上级菜单")
-            choice = input("请选择：").strip()
-
-            if choice == '1':
-                self._add_prerequisite_ui()
-            elif choice == '2':
-                self._view_prerequisites_ui()
-            elif choice == '3':
-                self._view_followup_courses_ui()
-            elif choice == '4':
-                self._delete_prerequisite_ui()
-            elif choice == '5':
-                self._check_prerequisites_passed_ui()
-            elif choice == '0':
-                break
-            else:
-                print("❌ 无效选择")
-
-    def _add_prerequisite_ui(self):
-        """添加先修课程关系界面"""
-        print("\n--- 添加先修课程关系 ---")
-        courses = self.db.get_all_courses()
-        if not courses:
-            print("❌ 暂无课程，请先添加课程")
-            return
-        print("\n可选课程列表：")
-        print(f"\n{'课程号':<12} {'课程名':<20} {'教师':<10} {'学分':<6}")
-        print("-" * 55)
-        for c in courses:
-            print(f"{c['course_id']:<12} {c['course_name']:<20} "
-                  f"{c['teacher_name']:<10} {c['credit']:<6}")
-
-        course_id = input("\n请输入课程号（需要先修的课程）：").strip()
-        if not self.db.course_exists(course_id):
-            print(f"❌ 课程号 {course_id} 不存在")
-            return
-
-        prereq_id = input("请输入先修课程号：").strip()
-        if not self.db.course_exists(prereq_id):
-            print(f"❌ 先修课程号 {prereq_id} 不存在")
-            return
-        if course_id == prereq_id:
-            print("❌ 课程不能是自己的先修课程")
-            return
-
-        from models import CoursePrerequisite
-        cp = CoursePrerequisite(course_id, prereq_id)
-        self.db.add_prerequisite(cp)
-
-    def _view_prerequisites_ui(self):
-        """查看课程的先修课程界面"""
-        print("\n--- 查看课程的先修课程 ---")
-        course_id = input("请输入课程号：").strip()
-        if not self.db.course_exists(course_id):
-            print(f"❌ 课程号 {course_id} 不存在")
-            return
-        prereqs = self.db.get_prerequisites_by_course(course_id)
-        if prereqs:
-            print(f"\n课程 {course_id} 的先修课程：")
-            print(f"\n{'先修课程号':<12} {'课程名':<20} {'教师':<10} {'学分':<6}")
-            print("-" * 55)
-            for p in prereqs:
-                print(f"{p['prerequisite_id']:<12} {p['course_name']:<20} "
-                      f"{p['teacher_name']:<10} {p['credit']:<6}")
-        else:
-            print(f"课程 {course_id} 没有设置先修课程")
-
-    def _view_followup_courses_ui(self):
-        """查看以某课程为先修的后续课程界面"""
-        print("\n--- 查看后续课程 ---")
-        prereq_id = input("请输入先修课程号：").strip()
-        if not self.db.course_exists(prereq_id):
-            print(f"❌ 课程号 {prereq_id} 不存在")
-            return
-        courses = self.db.get_courses_by_prerequisite(prereq_id)
-        if courses:
-            print(f"\n以 {prereq_id} 为先修课程的后续课程：")
-            print(f"\n{'课程号':<12} {'课程名':<20} {'教师':<10} {'学分':<6}")
-            print("-" * 55)
-            for c in courses:
-                print(f"{c['course_id']:<12} {c['course_name']:<20} "
-                      f"{c['teacher_name']:<10} {c['credit']:<6}")
-        else:
-            print(f"没有课程以 {prereq_id} 为先修课程")
-
-    def _delete_prerequisite_ui(self):
-        """删除先修课程关系界面"""
-        print("\n--- 删除先修课程关系 ---")
-        course_id = input("请输入课程号：").strip()
-        prereq_id = input("请输入先修课程号：").strip()
-        confirm = input(f"确认删除先修课程关系：{course_id} -> {prereq_id}？\n"
-                        f"请输入 'yes' 确认：").strip()
-        if confirm.lower() == 'yes':
-            self.db.delete_prerequisite(course_id, prereq_id)
-
-    def _check_prerequisites_passed_ui(self):
-        """检查学生是否满足先修课程要求界面"""
-        print("\n--- 检查学生先修课程通过情况 ---")
-        student_id = input("请输入学号：").strip()
-        if not self.db.student_exists(student_id):
-            print(f"❌ 学号 {student_id} 不存在")
-            return
-        course_id = input("请输入课程号：").strip()
-        if not self.db.course_exists(course_id):
-            print(f"❌ 课程号 {course_id} 不存在")
-            return
-
-        passed, failed = self.db.check_all_prerequisites_passed(student_id, course_id)
-        if passed:
-            print(f"✅ 学生 {student_id} 已满足 {course_id} 的所有先修课程要求，可以选修")
-        else:
-            print(f"❌ 学生 {student_id} 尚未满足 {course_id} 的先修课程要求：")
-            for f in failed:
-                print(f"   - {f['prerequisite_id']} {f['course_name']}（未通过）")
-
     def run(self):
         """系统主循环"""
         print("\n" + "=" * 55)
@@ -1083,21 +1005,21 @@ class StudentCourseSystem:
             elif choice == '20':
                 self.update_score_ui()
             elif choice == '21':
-                self.query_total_credits_ui()
-            elif choice == '22':
-                self.query_average_score_ui()
-            elif choice == '23':
-                self.view_management_menu()
-            elif choice == '24':
-                self.trigger_management_menu()
-            elif choice == '25':
-                self.procedure_management_menu()
-            elif choice == '26':
-                self.function_management_menu()
-            elif choice == '27':
-                self.constraint_management_menu()
-            elif choice == '28':
                 self.prerequisite_management_menu()
+            elif choice == '22':
+                self.query_total_credits_ui()
+            elif choice == '23':
+                self.query_average_score_ui()
+            elif choice == '24':
+                self.view_management_menu()
+            elif choice == '25':
+                self.trigger_management_menu()
+            elif choice == '26':
+                self.procedure_management_menu()
+            elif choice == '27':
+                self.function_management_menu()
+            elif choice == '28':
+                self.constraint_management_menu()
             elif choice == '0':
                 print("\n感谢使用学生选课管理系统，再见！👋")
                 self.db.close()

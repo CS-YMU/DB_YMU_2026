@@ -71,10 +71,6 @@ def init_advanced_objects():
     for c in db.show_table_constraints('sc'):
         print(f"  - {c['CONSTRAINT_NAME']} ({c['CONSTRAINT_TYPE']})")
 
-    print("【course_prerequisite 表约束】")
-    for c in db.show_table_constraints('course_prerequisite'):
-        print(f"  - {c['CONSTRAINT_NAME']} ({c['CONSTRAINT_TYPE']})")
-
     print("\n" + "=" * 60)
     print("     ✅ 高级数据库对象初始化完成！")
     print("=" * 60)

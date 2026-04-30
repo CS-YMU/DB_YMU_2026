@@ -35,22 +35,7 @@ CREATE TABLE IF NOT EXISTS course (
     course_name VARCHAR(100) NOT NULL,
     teacher_id VARCHAR(20) NOT NULL,
     credit DECIMAL(3,1) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_course_teacher FOREIGN KEY (teacher_id)
-        REFERENCES teacher(teacher_id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- 先修课程关联表（自关联多对多）
-CREATE TABLE IF NOT EXISTS course_prerequisite (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    course_id VARCHAR(20) NOT NULL,
-    prerequisite_id VARCHAR(20) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_cp_course FOREIGN KEY (course_id)
-        REFERENCES course(course_id) ON DELETE CASCADE,
-    CONSTRAINT fk_cp_prerequisite FOREIGN KEY (prerequisite_id)
-        REFERENCES course(course_id) ON DELETE CASCADE,
-    CONSTRAINT uk_course_prerequisite UNIQUE (course_id, prerequisite_id)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 选课表（sc.course_id 使用 RESTRICT：若有学生已选修则拒绝删除课程）
@@ -77,11 +62,10 @@ CREATE TABLE IF NOT EXISTS sc (
 
 ## 一、系统概述
 
-本系统是一个简单的学生选课管理系统，实现了学生、课程、教师、选课记录、先修课程的基本管理功能。通过本项目可以学习：
+本系统是一个简单的学生选课管理系统，实现了学生、课程、教师、选课记录的基本管理功能。通过本项目可以学习：
 - 数据库表的设计与关联
 - 外键约束与参照完整性
 - 级联删除的概念
-- 自关联多对多关系（先修课程）
 - SQL 语句的编写
 - Python + MySQL 的 CRUD 操作
 
@@ -129,25 +113,14 @@ CREATE TABLE IF NOT EXISTS sc (
 | 查询总学分 | 统计某个学生已获成绩的课程总学分 |
 | 查询平均成绩 | 统计某个学生已获成绩课程的平均分 |
 
-### 2.6 先修课程管理
-| 功能 | 说明 |
-|------|------|
-| 添加先修课程关系 | 为课程指定其先修课程 |
-| 查看课程的先修课程 | 查看某课程需要先完成哪些课程 |
-| 查看后续课程 | 查看以某课程为先修的后续课程 |
-| 删除先修课程关系 | 移除课程的先修课程关系 |
-| 检查先修要求是否满足 | 学生在选课时检查是否满足先修课程要求 |
-
-**选课规则**：学生选修某课程前，必须先通过（成绩≥60）该课程的所有先修课程。
-
 ## 三、架构设计
 
 ### 3.1 项目结构
 
 ```
-stu_app_v1_02/
+stu_app_v0-3/
 ├── main.py          # 主程序，系统入口，交互逻辑
-├── models.py        # 数据模型类（Student, Course, SC, Teacher, CoursePrerequisite）
+├── models.py        # 数据模型类（Student, Course, SC, Teacher）
 ├── database.py      # 数据库操作类，SQL 语句封装
 ├── init_data.py     # 测试数据初始化脚本
 ├── init_advanced.py  # 高级数据库对象初始化脚本
@@ -230,13 +203,6 @@ erDiagram
         created_at timestamp
     }
 
-    course_prerequisite {
-        id int PK
-        course_id varchar(20) FK
-        prerequisite_id varchar(20) FK
-        created_at timestamp
-    }
-
     sc {
         id int PK
         student_id varchar(20) FK
@@ -249,15 +215,12 @@ erDiagram
     students ||--o{ sc : "选修（1对多）"
     teacher ||--o{ course : "授课（1对多）"
     course ||--o{ sc : "被选修（1对多）"
-    course ||--o{ course_prerequisite : "课程（先修）"
-    course_prerequisite }o--|| course : "先修课程"
 ```
 
 **关系说明**：
 - `students ↔ sc` ：一对多关系（一个学生可以选多门课）
 - `course ↔ sc` ：一对多关系（一门课可以被多个学生选修）
 - `teacher ↔ course` ：一对多关系（一位教师可以教授多门课）
-- `course ↔ course_prerequisite` ：自关联多对多关系（课程与先修课程）
 - `sc` 是关联表，连接学生和课程
 
 ## 五、数据库设计
@@ -298,17 +261,7 @@ erDiagram
 | credit | DECIMAL(3,1) | NOT NULL | 学分 |
 | created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
 
-### 5.4 course_prerequisite 表（先修课程关联表）
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| id | INT | PRIMARY KEY, AUTO_INCREMENT | 主键 |
-| course_id | VARCHAR(20) | FOREIGN KEY → course | 课程号 |
-| prerequisite_id | VARCHAR(20) | FOREIGN KEY → course | 先修课程号 |
-| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| - | - | UNIQUE(course_id, prerequisite_id) | 唯一约束 |
-
-### 5.5 sc 表（选课表）
+### 5.4 sc 表（选课表）
 
 | 字段名 | 数据类型 | 约束 | 说明 |
 |--------|----------|------|------|
@@ -329,7 +282,6 @@ erDiagram
 | students | student_id | 每个学生有唯一的学号 |
 | teacher | teacher_id | 每位教师有唯一的教师编号 |
 | course | course_id | 每门课程有唯一的课程号 |
-| course_prerequisite | id | 每条先修关系有唯一的自增 ID |
 | sc | id | 每条选课记录有唯一的自增 ID |
 
 ### 6.2 参照完整性（外键约束）
@@ -346,21 +298,12 @@ CONSTRAINT fk_sc_course FOREIGN KEY (course_id)
 -- course.teacher_id 参考 teacher.teacher_id（删除教师则级联删除其课程）
 CONSTRAINT fk_course_teacher FOREIGN KEY (teacher_id)
     REFERENCES teacher(teacher_id) ON DELETE CASCADE
-
--- course_prerequisite.course_id 参考 course.course_id
-CONSTRAINT fk_cp_course FOREIGN KEY (course_id)
-    REFERENCES course(course_id) ON DELETE CASCADE
-
--- course_prerequisite.prerequisite_id 参考 course.course_id
-CONSTRAINT fk_cp_prerequisite FOREIGN KEY (prerequisite_id)
-    REFERENCES course(course_id) ON DELETE CASCADE
 ```
 
 **删除策略说明**：
 - 删除学生时：**自动删除**该学生的所有选课记录（CASCADE）
 - 删除课程时：**拒绝删除**（RESTRICT），若已有学生选修该课程
 - 删除教师时：**自动删除**该教师的所有课程（CASCADE）
-- 删除课程时：**自动删除**该课程相关的所有先修关系（CASCADE）
 
 ### 6.3 域完整性（CHECK 约束）
 
@@ -387,8 +330,6 @@ CONSTRAINT uk_student_course_semester UNIQUE (student_id, course_id, semester)
 | 删除课程时若有学生已选修则不能删除 | 外键约束保护，或业务逻辑检查 |
 | 总学分只统计有成绩的课程 | SQL 条件 `WHERE score IS NOT NULL` |
 | 平均成绩只统计有成绩的课程 | SQL 条件 `WHERE score IS NOT NULL` |
-| 学生必须先通过先修课程才能选修该课程 | 业务逻辑检查（check_all_prerequisites_passed） |
-| 先修课程关系不能重复 | 唯一约束 (course_id, prerequisite_id) |
 
 ## 七、快速开始
 
@@ -480,9 +421,6 @@ python main.py
   26. 函数管理
   27. 完整性约束管理
 
-  【先修课程管理】
-  28. 先修课程管理
-
   0. 退出系统
 =======================================================
 ```
@@ -553,40 +491,114 @@ CS102       操作系统              王老师          3.0
 3. **级联删除**：删除一门课程和删除一个学生，有什么不同的处理方式？
 4. **NULL 值处理**：为什么总学分和平均成绩的统计要排除 score 为 NULL 的记录？
 5. **数据一致性**：如果 sc 表不存储 course_name 和 teacher_name，会有什么问题？
-6. **自关联多对多**：course_prerequisite 表是课程表自身的自关联，这种设计有什么优点？如果不设计这张表，还有什么方式可以实现先修课程功能？
+
+## 十二、数据库建表语句（供参考）- 旧版（见第一节）
+
+```sql
+-- 学生表
+CREATE TABLE students (
+    student_id VARCHAR(20) PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    gender ENUM('男', '女', '其他') NOT NULL,
+    age INT CHECK (age > 0 AND age < 150),
+    major VARCHAR(100),
+    phone VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 课程表
+CREATE TABLE course (
+    course_id VARCHAR(20) PRIMARY KEY,
+    course_name VARCHAR(100) NOT NULL,
+    teacher_name VARCHAR(50) NOT NULL,
+    credit DECIMAL(3,1) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 选课表
+CREATE TABLE sc (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id VARCHAR(20) NOT NULL,
+    course_id VARCHAR(20) NOT NULL,
+    semester VARCHAR(20) NOT NULL,
+    score DECIMAL(5,2) DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_sc_student FOREIGN KEY (student_id)
+        REFERENCES students(student_id) ON DELETE CASCADE,
+    CONSTRAINT fk_sc_course FOREIGN KEY (course_id)
+        REFERENCES course(course_id) ON DELETE RESTRICT,
+    CONSTRAINT uk_student_course_semester UNIQUE (student_id, course_id, semester)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
 
 ---
 
-## 十一、选做内容
+## 十三、课后作业
 
-> 教师管理模块和先修课程功能均已在本版本中实现。以下为可选扩展内容：
+### 作业要求：补充教师信息管理模块
 
-### 扩展：先修课程功能（如已完成可忽略）
+#### 1. 背景说明
 
-**（1）`course_prerequisite` 表（已实现）**
+当前系统中，课程表 `course` 的 `teacher_name` 只是普通文本字段，存在以下问题：
+- 同一教师的信息（如电话、职称等）分散在不同的课程记录中
+- 无法方便地查询某位教师教授的所有课程
+- 教师信息无法复用
+
+#### 2. 任务内容
+
+在现有系统基础上，补充完整的教师信息管理模块，具体要求如下：
+
+**（1）新增教师表 `teacher`**
 
 | 字段名 | 数据类型 | 约束 | 说明 |
 |--------|----------|------|------|
-| id | INT | PRIMARY KEY, AUTO_INCREMENT | 主键 |
-| course_id | VARCHAR(20) | FOREIGN KEY → course | 课程号 |
-| prerequisite_id | VARCHAR(20) | FOREIGN KEY → course | 先修课程号 |
-| - | - | UNIQUE(course_id, prerequisite_id) | 唯一约束 |
+| teacher_id | VARCHAR(20) | PRIMARY KEY | 教师编号 |
+| name | VARCHAR(50) | NOT NULL | 姓名 |
+| gender | ENUM('男','女','其他') | NOT NULL | 性别 |
+| age | INT | CHECK (age > 0 AND age < 150) | 年龄 |
+| title | VARCHAR(50) | - | 职称（教授/副教授/讲师等） |
+| phone | VARCHAR(20) | - | 电话 |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
 
-**（2）先修课程管理功能（已实现，菜单 28）**
+**（2）修改课程表 `course`**
 
-- 添加先修课程关系
-- 查看课程的先修课程
-- 查看以某课程为先修的后续课程
-- 删除先修课程关系
-- 检查学生是否满足先修要求
+将 `teacher_name VARCHAR(50) NOT NULL` 替换为 `teacher_id VARCHAR(20) NOT NULL`，并添加外键约束：
+```sql
+CONSTRAINT fk_course_teacher FOREIGN KEY (teacher_id)
+    REFERENCES teacher(teacher_id) ON DELETE CASCADE
+```
 
-**（3）选课前置检查（已实现）**
+**（3）实现教师管理功能（在 main.py 中补充）**
 
-学生选课时，系统调用 `check_all_prerequisites_passed()` 检查是否已通过所有先修课程。
+| 功能 | 说明 |
+|------|------|
+| 添加教师 | 录入教师编号、姓名、性别、年龄、职称、电话 |
+| 查看所有教师 | 列表展示所有教师信息 |
+| 搜索教师 | 按教师编号或姓名关键词模糊查询 |
+| 修改教师信息 | 更新教师的各项信息 |
+| 删除教师 | 删除教师（若该教师有课程则级联删除课程） |
 
-#### 思考题
+**（4）修改课程管理相关功能**
+
+- 添加课程时，由用户选择授课教师（从已有教师列表中选择）
+- 查看/搜索课程时，显示授课教师姓名而非教师编号
+- 删除教师时，该教师的所有课程自动被删除（级联删除）
+
+#### 3. 实现提示
+
+1. 在 `models.py` 中新增 `Teacher` 类
+2. 在 `database.py` 中：
+   - 新增 `create_teacher_table()` 方法
+   - 新增 `add_teacher()` / `get_all_teachers()` / `search_teachers()` / `update_teacher()` / `delete_teacher()` 方法
+   - 修改 `create_course_query`，将 `teacher_name` 改为 `teacher_id` 并添加外键
+   - 修改 `add_course()` / `search_courses()` / `get_all_courses()` 等方法，适配新的课程表结构
+3. 在 `main.py` 中新增教师管理菜单和相关处理逻辑
+4. 修改 `init_data.py`，补充教师测试数据
+5. 将最终结果截图上传到课件系统（包括建表所有SQL，插入对应课程信息表里面的教师信息，还有mysqlworkench 里面实体联系图，更新README.md）
+
+#### 4. 思考题
 
 1. 删除一位教师时，其教授的课程也会被删除，那么这些课程关联的选课记录会如何处理？
 2. 如果希望删除教师时保留课程（只解除关联关系），应该如何修改外键约束？
 3. 如何保证不会出现"孤立的课程"（即没有授课教师的课程）？
-4. 先修课程关系能否形成循环（如 A 是 B 的先修，B 又是 A 的先修）？数据库如何防止这种情况？

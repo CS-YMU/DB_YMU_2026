@@ -52,10 +52,10 @@ class Teacher:
 
 
 class CoursePrerequisite:
-    """课程先修课程关联类"""
+    """课程先修关系类"""
     def __init__(self, course_id, prerequisite_id):
         self.course_id = course_id          # 课程号
         self.prerequisite_id = prerequisite_id  # 先修课程号
 
     def __str__(self):
-        return f"课程号：{self.course_id} | 先修课程号：{self.prerequisite_id}"
+        return f"课程：{self.course_id} | 先修课程：{self.prerequisite_id}"

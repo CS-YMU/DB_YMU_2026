@@ -10,7 +10,7 @@
 week08/stu_app_v1_02/
 ├── main.py               # CLI 主程序（已扩展数据库对象管理菜单）
 ├── database.py           # 数据库操作类（新增视图/触发器/过程/函数/约束管理）
-├── models.py             # 数据模型（Student、Course、SC、Teacher、CoursePrerequisite）
+├── models.py             # 数据模型（Student、Course、SC、Teacher）
 ├── init_data.py          # 基础数据初始化脚本
 ├── init_advanced.py      # 【新增】高级数据库对象一键初始化与演示
 ├── requirements.txt      # 依赖（mysql-connector-python）

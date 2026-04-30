@@ -91,26 +91,24 @@ class Database:
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         """
 
-        # 创建课程先修课程关联表（在 course 表之后创建）
-        create_course_prerequisite_query = """
+        # 创建先修课程关系表
+        create_prerequisite_query = """
         CREATE TABLE IF NOT EXISTS course_prerequisite (
-            id INT AUTO_INCREMENT PRIMARY KEY,
             course_id VARCHAR(20) NOT NULL,
             prerequisite_id VARCHAR(20) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (course_id, prerequisite_id),
             CONSTRAINT fk_cp_course FOREIGN KEY (course_id)
                 REFERENCES course(course_id) ON DELETE CASCADE,
             CONSTRAINT fk_cp_prerequisite FOREIGN KEY (prerequisite_id)
-                REFERENCES course(course_id) ON DELETE CASCADE,
-            CONSTRAINT uk_course_prerequisite UNIQUE (course_id, prerequisite_id)
+                REFERENCES course(course_id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         """
         try:
             self.cursor.execute(create_students_query)
             self.cursor.execute(create_teacher_query)
             self.cursor.execute(create_course_query)
-            self.cursor.execute(create_course_prerequisite_query)
             self.cursor.execute(create_sc_query)
+            self.cursor.execute(create_prerequisite_query)
             self.connection.commit()
             print("✅ 数据表创建成功")
         except Error as e:
@@ -259,7 +257,7 @@ class Database:
             print(f"❌ 搜索失败：{e}")
             return []
 
-def update_course(self, course_id, update_data):
+    def update_course(self, course_id, update_data):
         """更新课程信息"""
         query = """
         UPDATE course
@@ -322,107 +320,6 @@ def update_course(self, course_id, update_data):
         except Error as e:
             print(f"❌ 查询失败：{e}")
             return None
-
-    # ==================== 先修课程相关操作 ====================
-
-    def add_prerequisite(self, cp_record):
-        """添加先修课程关系"""
-        query = """
-        INSERT INTO course_prerequisite (course_id, prerequisite_id)
-        VALUES (%s, %s)
-        """
-        try:
-            self.cursor.execute(query, (
-                cp_record.course_id, cp_record.prerequisite_id
-            ))
-            self.connection.commit()
-            print(f"✅ 先修课程添加成功：{cp_record.course_id} -> {cp_record.prerequisite_id}")
-            return True
-        except Error as e:
-            if "Duplicate entry" in str(e):
-                print(f"❌ 该先修课程关系已存在")
-            else:
-                print(f"❌ 添加失败：{e}")
-            return False
-
-    def get_prerequisites_by_course(self, course_id):
-        """获取某课程的先修课程列表"""
-        query = """
-        SELECT cp.prerequisite_id, c.course_name, t.name as teacher_name, c.credit
-        FROM course_prerequisite cp
-        JOIN course c ON cp.prerequisite_id = c.course_id
-        LEFT JOIN teacher t ON c.teacher_id = t.teacher_id
-        WHERE cp.course_id = %s
-        ORDER BY cp.prerequisite_id
-        """
-        try:
-            self.cursor.execute(query, (course_id,))
-            return self.cursor.fetchall()
-        except Error as e:
-            print(f"❌ 查询失败：{e}")
-            return []
-
-    def get_courses_by_prerequisite(self, prerequisite_id):
-        """获取以某课程为先修课程的后续课程列表"""
-        query = """
-        SELECT cp.course_id, c.course_name, t.name as teacher_name, c.credit
-        FROM course_prerequisite cp
-        JOIN course c ON cp.course_id = c.course_id
-        LEFT JOIN teacher t ON c.teacher_id = t.teacher_id
-        WHERE cp.prerequisite_id = %s
-        ORDER BY cp.course_id
-        """
-        try:
-            self.cursor.execute(query, (prerequisite_id,))
-            return self.cursor.fetchall()
-        except Error as e:
-            print(f"❌ 查询失败：{e}")
-            return []
-
-    def delete_prerequisite(self, course_id, prerequisite_id):
-        """删除先修课程关系"""
-        query = """
-        DELETE FROM course_prerequisite
-        WHERE course_id = %s AND prerequisite_id = %s
-        """
-        try:
-            self.cursor.execute(query, (course_id, prerequisite_id))
-            self.connection.commit()
-            if self.cursor.rowcount > 0:
-                print(f"✅ 先修课程关系删除成功")
-                return True
-            else:
-                print(f"❌ 未找到对应的先修课程关系")
-                return False
-        except Error as e:
-            print(f"❌ 删除失败：{e}")
-            return False
-
-    def check_student_passed_prerequisite(self, student_id, course_id):
-        """检查学生是否已通过先修课程（成绩>=60）"""
-        query = """
-        SELECT COUNT(*) as cnt
-        FROM sc
-        WHERE student_id = %s AND course_id = %s AND score IS NOT NULL AND score >= 60
-        """
-        try:
-            self.cursor.execute(query, (student_id, course_id))
-            result = self.cursor.fetchone()
-            return result['cnt'] > 0
-        except Error as e:
-            print(f"❌ 查询失败：{e}")
-            return False
-
-    def check_all_prerequisites_passed(self, student_id, course_id):
-        """检查学生是否满足某课程的所有先修课程要求"""
-        prerequisites = self.get_prerequisites_by_course(course_id)
-        if not prerequisites:
-            return True, []
-        failed = []
-        for p in prerequisites:
-            if not self.check_student_passed_prerequisite(student_id, p['prerequisite_id']):
-                failed.append(p)
-        return len(failed) == 0, failed
 
     # ==================== 选课相关操作 ====================
 
@@ -530,7 +427,14 @@ def update_course(self, course_id, update_data):
     # ==================== 选课相关操作 ====================
 
     def add_course_selection(self, sc_record):
-        """添加选课记录"""
+        """添加选课记录（含先修课程检查）"""
+        # 先检查先修课程是否已修完
+        unmet = self.check_prerequisites(sc_record.student_id, sc_record.course_id)
+        if unmet:
+            names = ", ".join([f"{p['prerequisite_id']}({p['course_name']})" for p in unmet])
+            print(f"❌ 选课失败：未通过先修课程 {names}")
+            return False
+
         query = """
         INSERT INTO sc (student_id, course_id, semester)
         VALUES (%s, %s, %s)
@@ -547,6 +451,97 @@ def update_course(self, course_id, update_data):
                 print(f"❌ 选课失败：该学生已在同一学期选修过此课程")
             else:
                 print(f"❌ 选课失败：{e}")
+            return False
+
+    def check_prerequisites(self, student_id, course_id):
+        """
+        检查学生是否满足某课程的先修条件。
+        返回未通过的先修课程列表（空列表表示全部通过）。
+        """
+        query = """
+        SELECT cp.prerequisite_id, c.course_name
+        FROM course_prerequisite cp
+        JOIN course c ON cp.prerequisite_id = c.course_id
+        LEFT JOIN sc ON sc.student_id = %s
+            AND sc.course_id = cp.prerequisite_id
+            AND sc.score IS NOT NULL
+            AND sc.score >= 60
+        WHERE cp.course_id = %s AND sc.student_id IS NULL
+        """
+        try:
+            self.cursor.execute(query, (student_id, course_id))
+            return self.cursor.fetchall()
+        except Error as e:
+            print(f"❌ 先修检查失败：{e}")
+            return []
+
+    def add_prerequisite(self, course_id, prerequisite_id):
+        """设置课程先修关系"""
+        query = """
+        INSERT INTO course_prerequisite (course_id, prerequisite_id)
+        VALUES (%s, %s)
+        """
+        try:
+            self.cursor.execute(query, (course_id, prerequisite_id))
+            self.connection.commit()
+            print(f"✅ 先修关系设置成功：{course_id} 的先修课程为 {prerequisite_id}")
+            return True
+        except Error as e:
+            if "Duplicate entry" in str(e):
+                print(f"❌ 该先修关系已存在")
+            else:
+                print(f"❌ 设置先修关系失败：{e}")
+            return False
+
+    def get_prerequisites(self, course_id):
+        """查询某课程的所有先修课程"""
+        query = """
+        SELECT cp.prerequisite_id, c.course_name
+        FROM course_prerequisite cp
+        JOIN course c ON cp.prerequisite_id = c.course_id
+        WHERE cp.course_id = %s
+        """
+        try:
+            self.cursor.execute(query, (course_id,))
+            return self.cursor.fetchall()
+        except Error as e:
+            print(f"❌ 查询先修课程失败：{e}")
+            return []
+
+    def get_all_prerequisites(self):
+        """查询所有先修关系"""
+        query = """
+        SELECT cp.course_id, c1.course_name AS course_name,
+               cp.prerequisite_id, c2.course_name AS prerequisite_name
+        FROM course_prerequisite cp
+        JOIN course c1 ON cp.course_id = c1.course_id
+        JOIN course c2 ON cp.prerequisite_id = c2.course_id
+        ORDER BY cp.course_id
+        """
+        try:
+            self.cursor.execute(query)
+            return self.cursor.fetchall()
+        except Error as e:
+            print(f"❌ 查询先修关系失败：{e}")
+            return []
+
+    def delete_prerequisite(self, course_id, prerequisite_id):
+        """删除先修关系"""
+        query = """
+        DELETE FROM course_prerequisite
+        WHERE course_id = %s AND prerequisite_id = %s
+        """
+        try:
+            self.cursor.execute(query, (course_id, prerequisite_id))
+            self.connection.commit()
+            if self.cursor.rowcount > 0:
+                print(f"✅ 先修关系删除成功：{course_id} <- {prerequisite_id}")
+                return True
+            else:
+                print(f"❌ 先修关系不存在")
+                return False
+        except Error as e:
+            print(f"❌ 删除先修关系失败：{e}")
             return False
 
     def get_student_courses(self, student_id):
@@ -743,15 +738,14 @@ def update_course(self, course_id, update_data):
         SELECT
             c.course_id,
             c.course_name,
-            t.name AS teacher_name,
+            c.teacher_name,
             COUNT(sc.student_id) AS student_count,
             AVG(sc.score) AS avg_score,
             MAX(sc.score) AS max_score,
             MIN(sc.score) AS min_score
         FROM course c
-        LEFT JOIN teacher t ON c.teacher_id = t.teacher_id
         LEFT JOIN sc ON c.course_id = sc.course_id AND sc.score IS NOT NULL
-        GROUP BY c.course_id, c.course_name, t.name;
+        GROUP BY c.course_id, c.course_name, c.teacher_name;
         """
         try:
             self.cursor.execute(query)
@@ -964,9 +958,14 @@ def update_course(self, course_id, update_data):
     #   3. 使用 DROP TRIGGER IF EXISTS 避免重复创建报错
     def create_trigger_major_change_log(self):
         """【课后作业】创建触发器：记录学生专业变更日志"""
-        # TODO：先创建 major_change_log 表（如果不存在）
         create_log_table = """
-        -- TODO：请填写 CREATE TABLE IF NOT EXISTS major_change_log ...
+        CREATE TABLE IF NOT EXISTS major_change_log (
+            log_id INT AUTO_INCREMENT PRIMARY KEY,
+            student_id VARCHAR(20) NOT NULL,
+            old_major VARCHAR(100),
+            new_major VARCHAR(100),
+            changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         """
         try:
             self.cursor.execute(create_log_table)
@@ -976,7 +975,15 @@ def update_course(self, course_id, update_data):
 
         self.cursor.execute("DROP TRIGGER IF EXISTS trg_after_student_major_change_log")
         query = """
-        -- TODO：请填写 CREATE TRIGGER trg_after_student_major_change_log ...
+        CREATE TRIGGER trg_after_student_major_change_log
+        AFTER UPDATE ON students
+        FOR EACH ROW
+        BEGIN
+            IF OLD.major <> NEW.major THEN
+                INSERT INTO major_change_log (student_id, old_major, new_major)
+                VALUES (OLD.student_id, OLD.major, NEW.major);
+            END IF;
+        END
         """
         try:
             self.cursor.execute(query)
@@ -1111,7 +1118,12 @@ def update_course(self, course_id, update_data):
         """【课后作业】创建存储过程：课程成绩统一加分"""
         self.cursor.execute("DROP PROCEDURE IF EXISTS sp_score_bonus")
         query = """
-        -- TODO：请填写 CREATE PROCEDURE sp_score_bonus(IN p_course_id VARCHAR(20), IN p_bonus DECIMAL(5,2)) ...
+        CREATE PROCEDURE sp_score_bonus(IN p_course_id VARCHAR(20), IN p_bonus DECIMAL(5,2))
+        BEGIN
+            UPDATE sc
+            SET score = LEAST(score + p_bonus, 100)
+            WHERE course_id = p_course_id AND score IS NOT NULL;
+        END
         """
         try:
             self.cursor.execute(query)
@@ -1125,8 +1137,10 @@ def update_course(self, course_id, update_data):
     def call_proc_score_bonus(self, course_id, bonus):
         """【课后作业】调用存储过程 sp_score_bonus"""
         try:
-            # TODO：请填写 CALL sp_score_bonus(%s, %s)
-            pass
+            self.cursor.execute("CALL sp_score_bonus(%s, %s)", (course_id, bonus))
+            self.connection.commit()
+            print(f"✅ 成绩加分完成：课程 {course_id} 加 {bonus} 分（上限 100）")
+            return True
         except Error as e:
             print(f"❌ 调用存储过程失败：{e}")
             return None
@@ -1250,7 +1264,23 @@ def update_course(self, course_id, update_data):
         """【课后作业】创建函数：百分制转 4.0 制 GPA"""
         self.cursor.execute("DROP FUNCTION IF EXISTS fn_gpa")
         query = """
-        -- TODO：请填写 CREATE FUNCTION fn_gpa(score DECIMAL(5,2)) ...
+        CREATE FUNCTION fn_gpa(score DECIMAL(5,2))
+        RETURNS DECIMAL(2,1)
+        DETERMINISTIC
+        BEGIN
+            IF score IS NULL THEN RETURN NULL;
+            ELSEIF score >= 90 THEN RETURN 4.0;
+            ELSEIF score >= 85 THEN RETURN 3.7;
+            ELSEIF score >= 82 THEN RETURN 3.3;
+            ELSEIF score >= 78 THEN RETURN 3.0;
+            ELSEIF score >= 75 THEN RETURN 2.7;
+            ELSEIF score >= 72 THEN RETURN 2.3;
+            ELSEIF score >= 68 THEN RETURN 2.0;
+            ELSEIF score >= 64 THEN RETURN 1.5;
+            ELSEIF score >= 60 THEN RETURN 1.0;
+            ELSE RETURN 0.0;
+            END IF;
+        END
         """
         try:
             self.cursor.execute(query)
@@ -1389,8 +1419,11 @@ def update_course(self, course_id, update_data):
     #      phone IS NULL OR phone REGEXP '^[0-9]{11}$'
     def add_demo_phone_constraint(self):
         """【课后作业】添加手机号格式 CHECK 约束"""
-        # TODO：请填写调用 add_check_constraint 的代码，约束名建议为 chk_phone_format
-        pass
+        return self.add_check_constraint(
+            'chk_phone_format',
+            'students',
+            "phone IS NULL OR phone REGEXP '^[0-9]{11}$'"
+        )
 
     def close(self):
         """关闭连接"""
