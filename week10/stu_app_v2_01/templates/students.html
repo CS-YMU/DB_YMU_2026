@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}学生管理 —— DB06{% endblock %}
+{% block content %}
+
+<div class="card">
+    <h1>学生管理</h1>
+    <p>展示 <strong>嵌入式 SQL 的 SELECT 查询</strong> + <strong>自定义函数调用</strong>。
+        每个学生的"总学分"通过调用 MySQL 函数 <code>fn_GetTotalCreditBySID(学号)</code> 动态计算。</p>
+
+    <a href="/student/add" class="btn btn-success">+ 新增学生</a>
+
+    <table>
+        <thead>
+            <tr>
+                <th>学号</th>
+                <th>姓名</th>
+                <th>性别</th>
+                <th>年龄</th>
+                <th>系别</th>
+                <th>身份证号</th>
+                <th>已获总学分</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in students %}
+            <tr>
+                <td><a href="/student/{{ s.id }}">{{ s.id }}</a></td>
+                <td>{{ s.name }}</td>
+                <td>{{ s.sex_display }}</td>
+                <td>{{ s.age }}</td>
+                <td><span class="badge badge-dept">{{ s.dept_display }}</span></td>
+                <td><code>{{ s.rid }}</code></td>
+                <td>
+                    {% if s.total_credit > 0 %}
+                        <strong style="color:#2e7d32">{{ s.total_credit }} 学分</strong>
+                    {% else %}
+                        <span style="color:#888">0 学分</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="/student/{{ s.id }}" class="btn btn-info btn-xs">详情</a>
+                    <a href="/student/{{ s.id }}/edit" class="btn btn-primary btn-xs">编辑</a>
+                    <form action="/student/{{ s.id }}/delete" method="POST" style="display:inline"
+                          onsubmit="return confirm('确定删除学生 {{ s.name }} 吗？')">
+                        <button type="submit" class="btn btn-danger btn-xs">删除</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="alert-info">
+        <strong>教学说明：</strong>"已获总学分"列通过 <code>SELECT fn_GetTotalCreditBySID(学号)</code> 计算。
+        这是嵌入式 SQL 中函数调用的典型用法 —— Python 代码嵌入 SQL 函数调用，由数据库服务器执行计算逻辑。
+    </div>
+</div>
+
+{% endblock %}

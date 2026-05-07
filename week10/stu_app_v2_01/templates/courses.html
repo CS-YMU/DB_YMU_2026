@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}课程管理 —— DB06{% endblock %}
+{% block content %}
+
+<div class="card">
+    <h1>课程管理</h1>
+    <p>展示 <strong>自引用外键的 LEFT JOIN 查询</strong>。课程表的 <code>PID</code>（先修课程编号）引用自身的 <code>ID</code>，
+        通过 LEFT JOIN 获取先修课程名称。</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>课程编号</th>
+                <th>课程名称</th>
+                <th>学分</th>
+                <th>先修课程</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in courses %}
+            <tr>
+                <td>{{ c.id }}</td>
+                <td>{{ c.name }}</td>
+                <td>{{ c.credit }}</td>
+                <td>
+                    {% if c.has_prerequisite %}
+                        {{ c.prerequisite_name }} (ID: {{ c.pid }})
+                    {% else %}
+                        <span style="color:#888">无</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="/course/{{ c.id }}/stat" class="btn btn-info btn-xs">统计信息</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="alert-info">
+        <strong>教学说明：</strong>点击"统计信息"将调用存储过程 <code>sp_CourseStat</code>，
+        一次调用返回 5 个输出参数（平均分、最高分、最低分、及格人数、总人数）。
+        这展示了存储过程"一次调用，多重结果"的效率优势。
+    </div>
+</div>
+
+{% endblock %}

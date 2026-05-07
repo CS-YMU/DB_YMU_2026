@@ -9,15 +9,10 @@
 课堂演示时可能运行过视图、触发器、存储过程，或者学生误建了额外表。
 为了避免历史实验对象干扰，本脚本每次都会删除并重建 dbsample。
 """
+import os
 import subprocess
 from pathlib import Path
-
-DB_CONFIG = {
-    'host': 'localhost',
-    'database': 'dbsample',
-    'user': 'dylan',
-    'password': 'P@ssw0rd'
-}
+from config import DB_CONFIG
 
 # 这些路径是相对当前文件推导出来的：
 # homework/
@@ -100,27 +95,31 @@ FROM student s;
 
 
 def run_mysql(sql=None, database=None):
-    """执行 mysql CLI 命令，统一传入连接参数和字符集。
+    “””执行 mysql CLI 命令，统一传入连接参数和字符集。
 
-    这里使用 mysql 命令行而不是 mysql.connector，是为了让“建库导入 SQL”
+    这里使用 mysql 命令行而不是 mysql.connector，是为了让”建库导入 SQL”
     不依赖 Python 包是否安装，学生只要有 MySQL 客户端即可初始化。
-    """
+
+    密码通过 MYSQL_PWD 环境变量传递，避免 -p 标志将密码暴露在进程列表中。
+    “””
     cmd = [
         'mysql',
         '-h', DB_CONFIG['host'],
         '-u', DB_CONFIG['user'],
-        f"-p{DB_CONFIG['password']}",
         '--default-character-set=gb18030',
     ]
     if database:
         cmd.append(database)
+
+    env = {**os.environ, 'MYSQL_PWD': DB_CONFIG['password']}
 
     return subprocess.run(
         cmd,
         input=sql,
         capture_output=True,
         check=False,
-        timeout=60
+        timeout=60,
+        env=env,
     )
 
 

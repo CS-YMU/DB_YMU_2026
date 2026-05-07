@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}任务1：自定义函数 —— DB06 实验平台{% endblock %}
+{% block content %}
+
+<div class="breadcrumb">
+    <a href="/">首页</a> &raquo; <a href="/lab">实验平台</a> &raquo; 任务1：自定义函数
+</div>
+
+<div class="card">
+    <h1>任务1：编写函数统计学生总学分（50分）</h1>
+
+    <h2>题目要求</h2>
+    <table>
+        <thead>
+            <tr><th>项目</th><th>要求</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>函数名</td><td><code>fn_GetTotalCreditBySID</code></td></tr>
+            <tr><td>输入参数</td><td><code>p_sid INT</code>（学生学号）</td></tr>
+            <tr><td>返回值</td><td><code>DECIMAL(5,1)</code> 总学分</td></tr>
+            <tr><td>规则1</td><td>只统计选课成绩 ≥ 60 的课程</td></tr>
+            <tr><td>规则2</td><td>学分从 <code>course</code> 表的 <code>Credit</code> 字段获取</td></tr>
+            <tr><td>规则3</td><td>学生不存在或没有及格记录，返回 0</td></tr>
+            <tr><td>规则4</td><td>使用 <code>SUM</code> + 多表连接实现，<strong>不允许使用游标</strong></td></tr>
+        </tbody>
+    </table>
+
+    <h2>测试用例</h2>
+    <table>
+        <thead>
+            <tr><th>输入（学号）</th><th>预期结果</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>200215121</code></td><td><code>10.0</code></td><td>李勇，3门及格课（数据库4.0 + 数学2.0 + 信息系统4.0）</td></tr>
+            <tr><td><code>200215125</code></td><td><code>0</code></td><td>张立，无选课记录</td></tr>
+            <tr><td><code>999999</code></td><td><code>0</code></td><td>不存在的学号</td></tr>
+        </tbody>
+    </table>
+
+    <h2>SQL 代码编辑器</h2>
+    <form method="POST" action="/lab/task1">
+        <textarea name="sql" rows="16" placeholder="在此输入你的 CREATE FUNCTION 代码..."
+            style="width:100%; font-family: monospace; font-size: 14px; padding: 12px; border: 1px solid #ccc; border-radius: 4px;"
+>{{ sql or '' }}</textarea>
+        <div class="btn-group" style="margin-top: 12px;">
+            <button type="submit" class="btn btn-success">提交评测</button>
+            <a href="/lab" class="btn btn-info">返回实验平台</a>
+        </div>
+    </form>
+
+    {% if result %}
+    <h2>评测结果</h2>
+
+    {% if result.syntax_error %}
+    <div class="flash flash-error" style="margin-bottom: 16px;">
+        <strong>语法错误：</strong>{{ result.syntax_error }}
+    </div>
+    {% endif %}
+
+    {% if result.test_cases %}
+    <table>
+        <thead>
+            <tr>
+                <th>测试用例</th>
+                <th>输入</th>
+                <th>预期</th>
+                <th>实际</th>
+                <th>结果</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tc in result.test_cases %}
+            <tr>
+                <td>{{ tc.desc }}</td>
+                <td>{{ tc.input }}</td>
+                <td>{{ tc.expected }}</td>
+                <td>
+                    {% if tc.error %}
+                        <span style="color: #c62828;">错误: {{ tc.error }}</span>
+                    {% else %}
+                        {{ tc.actual }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if tc.passed %}
+                        <span class="badge badge-pass">通过</span>
+                    {% else %}
+                        <span class="badge badge-fail">失败</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <div style="margin-top: 16px; padding: 16px; border-radius: 8px;
+        {% if result.score == 100 %}background: #e8f5e9; border: 2px solid #4caf50;{% else %}background: #fff3e0; border: 2px solid #ff9800;{% endif %}">
+        <strong>得分：{{ result.score }} / 100</strong>
+        {% if result.score == 100 %}
+            <span style="color: #2e7d32;">全部通过！</span>
+        {% else %}
+            <span style="color: #e65100;">还有测试用例未通过，请检查后重新提交。</span>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}嵌入式 SQL 概念 —— DB06{% endblock %}
+{% block content %}
+
+<div class="breadcrumb">
+    <a href="/">首页</a> &raquo; 嵌入式 SQL
+</div>
+
+<div class="card">
+    <h1>嵌入式 SQL（Embedded SQL）</h1>
+    <p>将 SQL 语句嵌入到宿主语言（如 Python）的代码中，实现应用程序对数据库的访问。</p>
+
+    <h2>核心概念对照</h2>
+    <table>
+        <thead>
+            <tr><th>PPT 概念</th><th>通用说明</th><th>本项目中的对应实现</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>宿主语言</strong></td>
+                <td>嵌入 SQL 的编程语言（如 Python）</td>
+                <td><strong>Python</strong> — Flask 路由函数中编写 SQL 访问代码</td>
+            </tr>
+            <tr>
+                <td><strong>SQL 通信区 (SQLCA)</strong></td>
+                <td>向主语言传递 SQL 语句的执行状态信息，使主语言能据此控制程序流程</td>
+                <td><strong>cursor 对象</strong> — 承载 SQL 执行状态（成功/失败、影响行数等）<br>
+                    <code>cursor.rowcount</code>、<code>cursor.fetchone()</code> 等方法提供状态反馈</td>
+            </tr>
+            <tr>
+                <td><strong>共享变量</strong></td>
+                <td>主语言向 SQL 语句提供参数；将 SQL 查询结果交主语言进一步处理</td>
+                <td><strong>参数化查询的 %s 占位符</strong> — Python 变量值通过占位符传入 SQL<br>
+                    <code>cursor.execute("SELECT ... WHERE ID = %s", (student_id,))</code></td>
+            </tr>
+            <tr>
+                <td><strong>游标 (Cursor)</strong></td>
+                <td>存放 SQL 查询结果集的缓冲区，解决集合操作 SQL 与过程语言处理的不匹配</td>
+                <td><strong>cursor 结果集</strong> — <code>cursor.fetchall()</code> 逐行获取查询结果<br>
+                    等价于 <code>EXEC SQL FETCH SX INTO ...</code></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>代码示例：本项目中的嵌入式 SQL</h2>
+
+    <div class="concept-section">
+        <h3>示例1：带参数的 SELECT（共享变量 + 通信区 + 游标）</h3>
+        <p>来自 <code>database.py</code> 的 <code>get_student_by_id()</code> 方法：</p>
+        <pre>
+<span class="cmt"># ===== Python 宿主语言代码 =====</span>
+<span class="kw">def</span> get_student_by_id(self, student_id):
+    <span class="cmt"># SQL 语句嵌入在 Python 代码中（嵌入式 SQL）</span>
+    <span class="cmt"># %s 是占位符，对应嵌入式 SQL 的 ? 占位符</span>
+    <span class="cmt"># student_id 是共享变量，向 SQL 传递数据</span>
+    sql = <span class="str">"SELECT ID, Name, Sex, Age, Dept FROM student WHERE ID = %s"</span>
+
+    <span class="cmt"># cursor 同时扮演：</span>
+    <span class="cmt"># 1. SQL 通信区 — 执行状态（成功/失败）</span>
+    <span class="cmt"># 2. 游标 — 存放查询结果集</span>
+    self.cursor.execute(sql, (student_id,))
+
+    <span class="cmt"># FETCH INTO — 从游标读取一行数据到共享变量(Python变量)</span>
+    <span class="kw">return</span> self.cursor.fetchone()</pre>
+    </div>
+
+    <div class="concept-section">
+        <h3>示例2：C 程序中的嵌入式 SQL（PPT 示例对比）</h3>
+        <pre>
+<span class="cmt">// 定义共享变量</span>
+<span class="kw">EXEC SQL BEGIN DECLARE SECTION;</span>
+    <span class="tbl">char  S_DeptName[64];</span>
+    <span class="tbl">char  S_StdID[64];</span>
+    <span class="tbl">char  S_StdName[64];</span>
+    <span class="tbl">int   S_StdAge;</span>
+<span class="kw">EXEC SQL END DECLARE SECTION;</span>
+
+<span class="cmt">// 定义 SQL 通信区</span>
+<span class="kw">EXEC SQL INCLUDE sqlca;</span>
+
+<span class="cmt">// 定义游标 SX</span>
+<span class="kw">EXEC SQL DECLARE SX CURSOR FOR</span>
+    <span class="kw">SELECT</span> <span class="tbl">ID, Name, Sex, Age</span>
+    <span class="kw">FROM</span> <span class="tbl">Student</span>
+    <span class="kw">WHERE</span> <span class="tbl">Dept</span> = <span class="str">:S_DeptName</span>;   <span class="cmt">// :S_DeptName 是共享变量</span>
+
+<span class="cmt">// 打开游标，逐条 FETCH</span>
+<span class="kw">EXEC SQL OPEN SX;</span>
+<span class="kw">while</span>(1) {
+    <span class="kw">EXEC SQL FETCH SX INTO</span> <span class="str">:S_SID, :S_SName, :S_SSex, :S_SAge</span>;
+    <span class="kw">if</span> (sqlca.sqlcode != 0) <span class="kw">break</span>;  <span class="cmt">// SQL 通信区判断成功与否</span>
+    <span class="cmt">// 处理数据...</span>
+}
+<span class="kw">EXEC SQL CLOSE SX;</span></pre>
+    </div>
+
+    <div class="concept-section">
+        <h3>示例3：动态嵌入式 SQL</h3>
+        <p>Python 中的动态 SQL 组装（对应 PPT 的 <code>EXECUTE IMMEDIATE</code>）：</p>
+        <pre>
+<span class="cmt"># 运行时根据用户输入动态组装 SQL 语句</span>
+<span class="kw">def</span> search_students(self, keyword, dept=None):
+    sql = <span class="str">"SELECT * FROM student WHERE Name LIKE %s"</span>
+    params = [<span class="str">f"%{keyword}%"</span>]
+
+    <span class="kw">if</span> dept:  <span class="cmt"># 运行时动态追加条件</span>
+        sql += <span class="str">" AND Dept = %s"</span>
+        params.append(dept)
+
+    <span class="cmt"># 等价于 PPT 中的：</span>
+    <span class="cmt"># EXEC SQL PREPARE stmt FROM :sqlstr;</span>
+    <span class="cmt"># EXEC SQL EXECUTE stmt USING :param1, :param2;</span>
+    self.cursor.execute(sql, tuple(params))
+    <span class="kw">return</span> self.cursor.fetchall()</pre>
+    </div>
+
+    <h2>为什么需要游标？</h2>
+    <div class="concept-section">
+        <p><strong>SQL 是集合操作语言</strong>，一条 SELECT 返回的是一个集合（多行数据）。</p>
+        <p><strong>宿主语言是过程操作语言</strong>（C、Python 等），一次只能处理一条记录。</p>
+        <p><strong>游标</strong>作为桥梁，将集合结果逐条传递给宿主语言处理，解决了这种"阻抗不匹配"问题。</p>
+        <p>在现代编程中，<code>cursor.fetchone()</code> / <code>cursor.fetchall()</code> 就是游标的实际体现。</p>
+    </div>
+</div>
+
+{% endblock %}

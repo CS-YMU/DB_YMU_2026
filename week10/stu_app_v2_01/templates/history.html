@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}数据管理发展历史 —— DB06{% endblock %}
+{% block content %}
+
+<div class="breadcrumb">
+    <a href="/">首页</a> &raquo; 数据管理发展历史
+</div>
+
+<div class="card">
+    <h1>数据库管理技术发展历史</h1>
+    <p>数据库管理技术经历了五个主要发展阶段。理解每个阶段的核心技术与痛点，有助于把握现代数据库系统的设计思想。</p>
+
+    <h2>五阶段总览对比表</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width:12%">阶段</th>
+                <th style="width:12%">时间</th>
+                <th style="width:18%">存储介质/模型</th>
+                <th style="width:28%">关键特性</th>
+                <th style="width:30%">核心挑战/痛点</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>手工管理</strong></td>
+                <td>1950年代中期前</td>
+                <td>穿孔卡片、磁带</td>
+                <td>程序与数据强绑定，无OS管理，数据不共享</td>
+                <td>无法共享，高度冗余，程序间无法协同，硬件昂贵</td>
+            </tr>
+            <tr>
+                <td><strong>文件系统</strong></td>
+                <td>1950s后期至1960s中期</td>
+                <td>磁盘、顺序/索引文件（ISAM）</td>
+                <td>数据可长期保存，可跨程序共享（以文件为单位），简单API访问</td>
+                <td>数据独立性差（文件结构改变则应用必须修改），缺乏原子性，查询能力弱</td>
+            </tr>
+            <tr>
+                <td><strong>数据库 (RDBMS)</strong></td>
+                <td>1960s末至2000s初</td>
+                <td>关系模型、SQL、磁盘</td>
+                <td>ACID强一致性，数据逻辑与物理独立性，标准SQL接口，查询优化器</td>
+                <td>水平扩展成本高（Scale-Out难），非结构化数据不友好</td>
+            </tr>
+            <tr>
+                <td><strong>大数据 (NoSQL)</strong></td>
+                <td>2000s初至2010s中期</td>
+                <td>键值/文档/列族存储、分布式文件系统</td>
+                <td>水平扩展，高可用，最终一致性，支持非结构化数据</td>
+                <td>查询能力弱（缺乏Join和复杂聚合），缺乏统一标准，运维复杂</td>
+            </tr>
+            <tr>
+                <td><strong>云原生与融合</strong></td>
+                <td>2015年至今</td>
+                <td>存算分离、湖仓一体、Serverless</td>
+                <td>弹性伸缩，全场景融合，实时化，智能化（Auto-Tuning），按量计费</td>
+                <td>技术选型复杂，跨云治理，数据隐私与合规</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>各阶段详解</h2>
+
+    <div class="concept-section">
+        <h3>第一阶段：手工管理数据（1950年代中期前）</h3>
+        <p><strong>背景：</strong>计算机刚诞生，主要用于科学计算，还没有操作系统。</p>
+        <ul style="margin-left:20px; line-height:2;">
+            <li><strong>核心技术：</strong>穿孔卡片、磁带</li>
+            <li><strong>特点：</strong>数据由应用程序自己管理，程序和数据紧密绑定（一个程序对应一组专属数据）</li>
+            <li><strong>痛点：</strong>数据极度冗余，程序间无法共享数据，硬件昂贵且只能顺序读写</li>
+        </ul>
+    </div>
+
+    <div class="concept-section">
+        <h3>第二阶段：文件系统阶段（1950s后期至1960s中期）</h3>
+        <p><strong>背景：</strong>操作系统出现，文件系统开始管理数据。</p>
+        <ul style="margin-left:20px; line-height:2;">
+            <li><strong>核心技术：</strong>顺序文件、索引文件（ISAM）、磁带、磁盘</li>
+            <li><strong>特点：</strong>数据可长期保存，可跨程序共享（以文件为单位），程序通过简单API（如C的fread/fwrite）访问</li>
+            <li><strong>痛点：</strong>
+                <ul>
+                    <li>数据独立性差 — 文件结构改变，应用程序必须修改</li>
+                    <li>缺乏原子性 — 系统崩溃可能使文件内容不完整</li>
+                    <li>查询能力弱 — 无法进行灵活的关联查询</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <div class="concept-section">
+        <h3>第三阶段：数据库管理阶段（1960s末至2000s初）</h3>
+        <p><strong>背景：</strong>现代数据管理核心形成，应用程序和数据库分离！</p>
+        <ul style="margin-left:20px; line-height:2;">
+            <li><strong>核心技术：</strong>
+                <ul>
+                    <li>网状/层次数据库（1960s）：IMS等，解决了关联问题但访问路径需预先指定</li>
+                    <li>关系型数据库（1970年至今）：Oracle、DB2、SQL Server、MySQL、PostgreSQL等，基于数学集合论，使用SQL声明式操作</li>
+                </ul>
+            </li>
+            <li><strong>关键飞跃：</strong>ACID保证、数据逻辑与物理独立性、标准SQL接口、索引与查询优化器</li>
+            <li><strong>痛点：</strong>面对互联网爆发（海量数据、高并发），传统RDBMS在水平扩展方面遇到瓶颈，对非结构化数据不友好</li>
+        </ul>
+    </div>
+
+    <div class="concept-section">
+        <h3>第四阶段：分布式数据管理 / 大数据时代（2000s初至2010s中期）</h3>
+        <p><strong>背景：</strong>谷歌论文（GFS、MapReduce、Bigtable）引领了革命，用廉价商用机集群处理海量数据。</p>
+        <ul style="margin-left:20px; line-height:2;">
+            <li><strong>核心技术：</strong>
+                <ul>
+                    <li>NoSQL：键值（Redis）、文档（MongoDB）、列族（Cassandra、HBase）、图（Neo4j）</li>
+                    <li>大数据计算框架：Hadoop（HDFS + MapReduce）、Spark、Flink</li>
+                </ul>
+            </li>
+            <li><strong>特点：</strong>放弃部分ACID换取高可用与水平扩展（CAP定理），接受最终一致性，支持非结构化/半结构化数据</li>
+            <li><strong>痛点：</strong>NoSQL查询能力弱，缺乏统一标准，多系统数据孤岛再现，运营复杂度过高</li>
+        </ul>
+    </div>
+
+    <div class="concept-section">
+        <h3>第五阶段：云原生与融合时代（2015年至今）</h3>
+        <p><strong>背景：</strong>云计算基础设施成熟，数据管理回归简单与智能。</p>
+        <ul style="margin-left:20px; line-height:2;">
+            <li><strong>核心技术：</strong>
+                <ul>
+                    <li>云原生数据库：Aurora、Spanner、Snowflake、TiDB —— 存算彻底分离，独立弹性伸缩</li>
+                    <li>NewSQL：兼具NoSQL的水平扩展与RDBMS的ACID和SQL能力（如Spanner、CockroachDB）</li>
+                    <li>湖仓一体：数据湖 + 数据仓库融合（Iceberg、Hudi、Delta Lake）</li>
+                    <li>数据虚拟化：统一查询层访问异构数据源</li>
+                    <li>智能化：ML自动调参、索引推荐、查询优化、异常检测</li>
+                </ul>
+            </li>
+            <li><strong>关键趋势：</strong>Serverless（完全托管、按量计费）、实时化（流批一体）、治理自动化（数据血缘、合规隐私）</li>
+            <li><strong>核心目标：</strong>融合前几个阶段的优点，利用云基础架构的弹性，让数据管理回归简单与智能</li>
+        </ul>
+    </div>
+
+    <div class="alert-info">
+        <strong>记忆口诀：</strong>手工 → 文件 → 数据库（RDBMS） → 大数据（NoSQL） → 云原生（融合）。
+        核心演进逻辑：<strong>程序与数据分离 → 声明式操作 → 水平扩展 → 存算分离 + 智能化</strong>。
+    </div>
+</div>
+
+{% endblock %}

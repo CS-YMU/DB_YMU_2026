@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}中间件架构 —— DB06{% endblock %}
+{% block content %}
+
+<div class="breadcrumb">
+    <a href="/">首页</a> &raquo; 中间件架构
+</div>
+
+<div class="card">
+    <h1>数据库中间件（DB Middleware）</h1>
+    <p>中间件是为应用程序访问各类数据库提供<strong>统一接口</strong>的软件，降低学习成本，屏蔽不同 DBMS 的差异。</p>
+
+    <h2>本项目的三层架构</h2>
+    <div class="arch-grid">
+        <div class="arch-layer">
+            <h3>表现层</h3>
+            <p><strong>app.py</strong> + <strong>templates/</strong></p>
+            <p>Flask 路由处理 HTTP 请求<br>HTML 模板渲染用户界面<br>接收用户输入，调用中间层</p>
+            <p style="margin-top:8px;font-size:13px;color:#666;">
+                不包含任何 SQL 代码<br>不直接访问数据库
+            </p>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-layer middle">
+            <h3>中间件层</h3>
+            <p><strong>database.py</strong></p>
+            <p>Database 类封装所有 SQL 操作<br>提供统一的数据访问方法<br>参数化查询防止 SQL 注入<br>管理连接、事务、游标</p>
+            <p style="margin-top:8px;font-size:13px;color:#666;">
+                更换数据库只需修改本层<br>上层代码不受影响
+            </p>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-layer">
+            <h3>数据层</h3>
+            <p><strong>MySQL DB06</strong></p>
+            <p>student / course 表<br>student_course 选课表<br>fn_GetTotalCreditBySID 函数<br>sp_CourseStat 存储过程</p>
+        </div>
+    </div>
+
+    <h2>为什么需要中间件？</h2>
+    <table>
+        <thead>
+            <tr><th>问题</th><th>没有中间件</th><th>有中间件</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>代码耦合</strong></td>
+                <td>应用程序代码中到处散落 SQL 语句，难以维护</td>
+                <td>SQL 集中在 database.py，应用层只调用方法</td>
+            </tr>
+            <tr>
+                <td><strong>DBMS 迁移</strong></td>
+                <td>从 MySQL 换到 PostgreSQL 需要修改所有代码</td>
+                <td>只需修改 database.py 一个文件</td>
+            </tr>
+            <tr>
+                <td><strong>安全性</strong></td>
+                <td>容易忘记参数化查询，导致 SQL 注入漏洞</td>
+                <td>统一使用参数化查询，集中防范</td>
+            </tr>
+            <tr>
+                <td><strong>学习成本</strong></td>
+                <td>开发者需要了解每种 DBMS 的具体 API</td>
+                <td>开发者只需了解中间层提供的统一接口</td>
+            </tr>
+            <tr>
+                <td><strong>连接管理</strong></td>
+                <td>每个开发者自己管理连接，容易泄漏</td>
+                <td>中间件统一管理连接生命周期</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>代码示例：本项目中间件的实际体现</h2>
+
+    <div class="concept-section">
+        <h3>表现层 (app.py) — 不写 SQL，只调用方法</h3>
+        <pre>
+<span class="cmt"># Flask 路由：处理用户请求</span>
+<span class="kw">@app.route</span>(<span class="str">'/students'</span>)
+<span class="kw">def</span> student_list():
+    <span class="cmt"># 不直接写 SQL！通过中间层获取数据</span>
+    students_data = <span class="fn">db</span>.get_all_students()
+
+    <span class="cmt"># 对每条记录调用数据库函数（函数调用也通过中间层）</span>
+    <span class="kw">for</span> row <span class="kw">in</span> students_data:
+        student = Student(row)
+        student.total_credit = <span class="fn">db</span>.call_fn_get_total_credit(student.id)
+
+    <span class="kw">return</span> render_template(<span class="str">'students.html'</span>, students=students)</pre>
+    </div>
+
+    <div class="concept-section">
+        <h3>中间件层 (database.py) — 封装所有 SQL</h3>
+        <pre>
+<span class="cmt"># Database 类：统一的数据访问接口</span>
+<span class="kw">class</span> Database:
+    <span class="kw">def</span> get_all_students(self):
+        <span class="str">"""查询所有学生"""</span>
+        sql = <span class="str">"SELECT ID, Name, Sex, Age, Dept FROM student"</span>
+        self.cursor.execute(sql)
+        <span class="kw">return</span> self.cursor.fetchall()
+
+    <span class="kw">def</span> call_fn_get_total_credit(self, student_id):
+        <span class="str">"""调用自定义函数"""</span>
+        sql = <span class="str">"SELECT fn_GetTotalCreditBySID(%s) AS TotalCredit"</span>
+        self.cursor.execute(sql, (student_id,))
+        <span class="kw">return</span> self.cursor.fetchone()[<span class="str">'TotalCredit'</span>]
+
+    <span class="kw">def</span> call_sp_course_stat(self, course_id):
+        <span class="str">"""调用存储过程"""</span>
+        self.cursor.execute(<span class="str">"CALL sp_CourseStat(%s, @avg, @max, @min, @pass, @total)"</span>,
+                            (course_id,))
+        self.cursor.execute(<span class="str">"SELECT @avg, @max, @min, @pass, @total"</span>)
+        <span class="kw">return</span> self.cursor.fetchone()</pre>
+    </div>
+
+    <h2>中间件架构的额外好处</h2>
+    <div class="concept-section">
+        <h3>存储过程 + 中间件 = 更强的安全性</h3>
+        <p>应用程序不传递 SQL 代码到数据库服务器，只传递<strong>存储过程名和参数</strong>：</p>
+        <ul style="margin-left:20px; line-height:2;">
+            <li>SQL 代码不会在网络上明文传输，避免泄露</li>
+            <li>杜绝 SQL 注入攻击（没有 SQL 语句可被篡改）</li>
+            <li>DBA 可以独立优化存储过程，不影响应用代码</li>
+        </ul>
+    </div>
+</div>
+
+{% endblock %}

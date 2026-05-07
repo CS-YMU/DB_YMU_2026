@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}{{ student.name }} —— 学生详情{% endblock %}
+{% block content %}
+
+<div class="breadcrumb">
+    <a href="/">首页</a> &raquo; <a href="/students">学生管理</a> &raquo; {{ student.name }}
+</div>
+
+<div class="card">
+    <h1>{{ student.name }} 的详细信息</h1>
+
+    <!-- 基本信息 -->
+    <h2>基本信息</h2>
+    <div class="form-inline">
+        <div class="form-group">
+            <label>学号</label>
+            <p>{{ student.id }}</p>
+        </div>
+        <div class="form-group">
+            <label>姓名</label>
+            <p>{{ student.name }}</p>
+        </div>
+        <div class="form-group">
+            <label>性别</label>
+            <p>{{ student.sex_display }}</p>
+        </div>
+        <div class="form-group">
+            <label>年龄</label>
+            <p>{{ student.age }}</p>
+        </div>
+        <div class="form-group">
+            <label>所在系</label>
+            <p>{{ student.dept_display }}</p>
+        </div>
+        <div class="form-group">
+            <label>身份证号</label>
+            <p><code>{{ student.rid }}</code></p>
+        </div>
+    </div>
+
+    <div class="stat-row" style="grid-template-columns: 1fr 1fr;">
+        <div class="stat-box {% if student.total_credit > 0 %}highlight{% endif %}">
+            <div class="stat-value">{{ student.total_credit }}</div>
+            <div class="stat-label">已获总学分（fn_GetTotalCreditBySID）</div>
+        </div>
+    </div>
+
+    <!-- 选课记录 -->
+    <h2>选课记录（多表 JOIN 查询）</h2>
+    {% if courses %}
+    <table>
+        <thead>
+            <tr>
+                <th>课程编号</th>
+                <th>课程名称</th>
+                <th>学分</th>
+                <th>成绩</th>
+                <th>状态</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in courses %}
+            <tr>
+                <td>{{ c.course_id }}</td>
+                <td>{{ c.course_name }}</td>
+                <td>{{ c.credit }}</td>
+                <td>{{ c.grade if c.grade else '-' }}</td>
+                <td>
+                    {% if c.is_passed %}
+                        <span class="badge badge-pass">及格</span>
+                    {% else %}
+                        <span class="badge badge-fail">不及格</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:#888">该学生暂无选课记录。</p>
+    {% endif %}
+
+    <div class="btn-group">
+        <a href="/student/{{ student.id }}/edit" class="btn btn-primary">编辑信息</a>
+        <a href="/students" class="btn btn-info">返回列表</a>
+    </div>
+</div>
+
+{% endblock %}

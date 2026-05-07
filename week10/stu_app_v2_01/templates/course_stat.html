@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}{{ course.name }} 统计 —— DB06{% endblock %}
+{% block content %}
+
+<div class="breadcrumb">
+    <a href="/">首页</a> &raquo; <a href="/courses">课程管理</a> &raquo; {{ course.name }} 统计
+</div>
+
+<div class="card">
+    <h1>{{ course.name }} (ID: {{ course.id }})</h1>
+    <p>
+        学分：{{ course.credit }} |
+        先修课程：{% if course.has_prerequisite %}{{ course.prerequisite_name }}{% else %}无{% endif %}
+    </p>
+
+    <!-- 存储过程统计结果 -->
+    <h2>存储过程 sp_CourseStat 输出</h2>
+    <p style="color:#888; margin-bottom:16px;">
+        以下数据通过 <code>CALL sp_CourseStat(课程编号, @avg, @max, @min, @pass, @total)</code> 一次调用获得。
+    </p>
+
+    <div class="stat-row">
+        <div class="stat-box">
+            <div class="stat-value">{{ "%.1f"|format(stat.avg_grade) }}</div>
+            <div class="stat-label">out_avg_grade — 平均分</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value">{{ "%.1f"|format(stat.max_grade) }}</div>
+            <div class="stat-label">out_max_grade — 最高分</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value">{{ "%.1f"|format(stat.min_grade) }}</div>
+            <div class="stat-label">out_min_grade — 最低分</div>
+        </div>
+        <div class="stat-box highlight">
+            <div class="stat-value">{{ stat.pass_num }} / {{ stat.total_num }}</div>
+            <div class="stat-label">out_pass_num — 及格人数 / out_total_num — 总人数</div>
+        </div>
+    </div>
+
+    {% if stat.total_num > 0 %}
+    <div class="stat-row" style="grid-template-columns: 1fr;">
+        <div class="stat-box highlight">
+            <div class="stat-value">{{ stat.pass_rate }}%</div>
+            <div class="stat-label">及格率</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 选课学生列表 -->
+    <h2>选课学生明细</h2>
+    {% if students %}
+    <table>
+        <thead>
+            <tr><th>学号</th><th>姓名</th><th>系别</th><th>成绩</th><th>状态</th></tr>
+        </thead>
+        <tbody>
+            {% for s in students %}
+            <tr>
+                <td><a href="/student/{{ s.StudentID }}">{{ s.StudentID }}</a></td>
+                <td>{{ s.StudentName }}</td>
+                <td>{{ s.Dept }}</td>
+                <td>{{ s.Grade if s.Grade else '-' }}</td>
+                <td>
+                    {% if s.Grade and s.Grade >= 60 %}
+                        <span class="badge badge-pass">及格</span>
+                    {% else %}
+                        <span class="badge badge-fail">不及格</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:#888">该课程暂无选课记录，所有输出参数均为 0。</p>
+    {% endif %}
+
+    <div class="btn-group">
+        <a href="/courses" class="btn btn-info">返回课程列表</a>
+    </div>
+
+    <div class="alert-info" style="margin-top: 24px;">
+        <strong>存储过程源码：</strong>
+        <pre>
+CREATE PROCEDURE sp_CourseStat(
+    IN  p_cid INT,              -- 输入：课程编号
+    OUT out_avg_grade DECIMAL(5,2), -- 输出：平均分
+    OUT out_max_grade DECIMAL(5,2), -- 输出：最高分
+    OUT out_min_grade DECIMAL(5,2), -- 输出：最低分
+    OUT out_pass_num INT,          -- 输出：及格人数(成绩≥60)
+    OUT out_total_num INT          -- 输出：选修总人数
+)
+BEGIN
+    SELECT IFNULL(AVG(Grade), 0), IFNULL(MAX(Grade), 0),
+           IFNULL(MIN(Grade), 0),
+           IFNULL(SUM(CASE WHEN Grade >= 60 THEN 1 ELSE 0 END), 0),
+           COUNT(*)
+    INTO out_avg_grade, out_max_grade, out_min_grade,
+         out_pass_num, out_total_num
+    FROM student_course WHERE CourseID = p_cid;
+END</pre>
+        <strong>调用方式：</strong><code>CALL sp_CourseStat(1, @avg, @max, @min, @pass, @total);</code><br>
+        <strong>获取结果：</strong><code>SELECT @avg, @max, @min, @pass, @total;</code>
+    </div>
+</div>
+
+{% endblock %}

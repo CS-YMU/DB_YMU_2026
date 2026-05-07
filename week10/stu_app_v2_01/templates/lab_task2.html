@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}任务2：存储过程 —— DB06 实验平台{% endblock %}
+{% block content %}
+
+<div class="breadcrumb">
+    <a href="/">首页</a> &raquo; <a href="/lab">实验平台</a> &raquo; 任务2：存储过程
+</div>
+
+<div class="card">
+    <h1>任务2：编写存储过程统计课程修读情况（50分）</h1>
+
+    <h2>题目要求</h2>
+    <table>
+        <thead>
+            <tr><th>项目</th><th>要求</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>过程名</td><td><code>sp_CourseStat</code></td></tr>
+            <tr><td>输入参数</td><td><code>p_cid INT</code>（课程编号）</td></tr>
+            <tr><td>输出参数1</td><td><code>out_avg_grade DECIMAL(5,2)</code> — 平均分</td></tr>
+            <tr><td>输出参数2</td><td><code>out_max_grade DECIMAL(5,2)</code> — 最高分</td></tr>
+            <tr><td>输出参数3</td><td><code>out_min_grade DECIMAL(5,2)</code> — 最低分</td></tr>
+            <tr><td>输出参数4</td><td><code>out_pass_num INT</code> — 及格人数（成绩 ≥ 60）</td></tr>
+            <tr><td>输出参数5</td><td><code>out_total_num INT</code> — 选修总人数</td></tr>
+            <tr><td>规则1</td><td>该课程没有选课记录时，所有输出参数均设为 0</td></tr>
+            <tr><td>规则2</td><td>必须使用<strong>一条聚合查询</strong> <code>SELECT ... INTO</code> 实现</td></tr>
+            <tr><td>规则3</td><td>注意处理 NULL（例如平均分使用 <code>IFNULL</code> 转为 0）</td></tr>
+        </tbody>
+    </table>
+
+    <h2>测试用例</h2>
+    <table>
+        <thead>
+            <tr><th>输入（课程ID）</th><th>预期输出</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>1</code></td>
+                <td>avg=93.0, max=93.0, min=93.0, pass=1, total=1</td>
+                <td>数据库（李勇 93.0）</td>
+            </tr>
+            <tr>
+                <td><code>2</code></td>
+                <td>avg=88.5, max=91.0, min=86.0, pass=2, total=2</td>
+                <td>数学（李勇 86.0, 刘晨 91.0）</td>
+            </tr>
+            <tr>
+                <td><code>999</code></td>
+                <td>avg=0, max=0, min=0, pass=0, total=0</td>
+                <td>不存在的课程</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>SQL 代码编辑器</h2>
+    <form method="POST" action="/lab/task2">
+        <textarea name="sql" rows="20" placeholder="在此输入你的 CREATE PROCEDURE 代码..."
+            style="width:100%; font-family: monospace; font-size: 14px; padding: 12px; border: 1px solid #ccc; border-radius: 4px;"
+>{{ sql or '' }}</textarea>
+        <div class="btn-group" style="margin-top: 12px;">
+            <button type="submit" class="btn btn-success">提交评测</button>
+            <a href="/lab" class="btn btn-info">返回实验平台</a>
+        </div>
+    </form>
+
+    {% if result %}
+    <h2>评测结果</h2>
+
+    {% if result.syntax_error %}
+    <div class="flash flash-error" style="margin-bottom: 16px;">
+        <strong>语法错误：</strong>{{ result.syntax_error }}
+    </div>
+    {% endif %}
+
+    {% if result.test_cases %}
+    <table>
+        <thead>
+            <tr>
+                <th>测试用例</th>
+                <th>输入</th>
+                <th>预期</th>
+                <th>实际</th>
+                <th>结果</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tc in result.test_cases %}
+            <tr>
+                <td>{{ tc.desc }}</td>
+                <td>{{ tc.input }}</td>
+                <td>{{ tc.expected_display }}</td>
+                <td>
+                    {% if tc.error %}
+                        <span style="color: #c62828;">错误: {{ tc.error }}</span>
+                    {% else %}
+                        {{ tc.actual_display }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if tc.passed %}
+                        <span class="badge badge-pass">通过</span>
+                    {% else %}
+                        <span class="badge badge-fail">失败</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <div style="margin-top: 16px; padding: 16px; border-radius: 8px;
+        {% if result.score == 100 %}background: #e8f5e9; border: 2px solid #4caf50;{% else %}background: #fff3e0; border: 2px solid #ff9800;{% endif %}">
+        <strong>得分：{{ result.score }} / 100</strong>
+        {% if result.score == 100 %}
+            <span style="color: #2e7d32;">全部通过！</span>
+        {% else %}
+            <span style="color: #e65100;">还有测试用例未通过，请检查后重新提交。</span>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

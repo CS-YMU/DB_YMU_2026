@@ -9,6 +9,7 @@
 """
 from models import Major, Student, Course, Teacher, StudentCourse
 from database import Database
+from config import DB_CONFIG
 from datetime import date
 
 
@@ -19,9 +20,11 @@ class StudentCourseSystem:
     main.py 只处理流程，真正的数据库读写由 self.db 完成。
     """
 
-    def __init__(self, host='localhost', database='dbsample',
-                 user='dylan', password='P@ssw0rd'):
-        self.db = Database(host, database, user, password)
+    def __init__(self, **kwargs):
+        config = {**DB_CONFIG, **kwargs}
+        self.db = Database(
+            config['host'], config['database'],
+            config['user'], config['password'])
 
     def show_menu(self):
         # 菜单按照 DB05 作业中的实体和关系组织：
@@ -1231,10 +1234,5 @@ class StudentCourseSystem:
 
 
 if __name__ == "__main__":
-    system = StudentCourseSystem(
-        host='localhost',
-        database='dbsample',
-        user='dylan',
-        password='P@ssw0rd'
-    )
+    system = StudentCourseSystem()
     system.run()

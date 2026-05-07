@@ -38,11 +38,14 @@ password = P@ssw0rd
 charset  = gb18030
 ```
 
-如需修改数据库连接参数，请同步修改：
+所有模块统一从 `config.py` 读取连接参数。如需修改默认值，编辑 `config.py` 即可；也可通过环境变量覆盖，无需改代码：
 
-- `main.py`
-- `init_data.py`
-- `init_advanced.py`
+```bash
+export DB_HOST=192.168.1.100
+export DB_USER=root
+export DB_PASSWORD=secret
+export DB_DATABASE=mydb
+```
 
 ### 2. 安装 Python 依赖
 

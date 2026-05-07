@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{% if student %}编辑学生{% else %}新增学生{% endif %} —— DB06{% endblock %}
+{% block content %}
+
+<div class="breadcrumb">
+    <a href="/">首页</a> &raquo; <a href="/students">学生管理</a> &raquo;
+    {% if student %}编辑 {{ student.name }}{% else %}新增学生{% endif %}
+</div>
+
+<div class="card">
+    <h1>{% if student %}编辑学生信息{% else %}新增学生{% endif %}</h1>
+
+    <p class="help-text" style="margin-bottom:20px;">
+        此表单演示 <strong>INSERT / UPDATE</strong> 操作。前端表单数据作为"共享变量"
+        传递给后端的参数化 SQL 语句（<code>%s</code> 占位符），有效防止 SQL 注入。
+    </p>
+
+    <form method="POST">
+        <div class="form-inline">
+            <div class="form-group">
+                <label for="id">学号 *</label>
+                <input type="text" id="id" name="id" required
+                       value="{{ student.id if student else '' }}"
+                       {% if student %}readonly{% endif %}
+                       placeholder="例如：200215121">
+                {% if student %}
+                <span class="help-text">学号不可修改</span>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label for="name">姓名 *</label>
+                <input type="text" id="name" name="name" required
+                       value="{{ student.name if student else '' }}"
+                       placeholder="例如：张三">
+            </div>
+            <div class="form-group">
+                <label for="sex">性别 *</label>
+                <select id="sex" name="sex" required>
+                    <option value="男" {% if student and student.sex == '男' %}selected{% endif %}>男</option>
+                    <option value="女" {% if student and student.sex == '女' %}selected{% endif %}>女</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="age">年龄 *</label>
+                <input type="number" id="age" name="age" required min="1" max="150"
+                       value="{{ student.age if student else '' }}"
+                       placeholder="例如：20">
+            </div>
+            <div class="form-group">
+                <label for="dept">所在系 *</label>
+                <select id="dept" name="dept" required>
+                    <option value="CS" {% if student and student.dept == 'CS' %}selected{% endif %}>CS - 计算机科学系</option>
+                    <option value="MA" {% if student and student.dept == 'MA' %}selected{% endif %}>MA - 数学系</option>
+                    <option value="IS" {% if student and student.dept == 'IS' %}selected{% endif %}>IS - 信息系统系</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="rid">身份证号 *</label>
+                <input type="text" id="rid" name="rid" required
+                       value="{{ student.rid if student else '' }}"
+                       placeholder="18位身份证号"
+                       pattern="[0-9]{17}[0-9Xx]"
+                       maxlength="18">
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button type="submit" class="btn btn-success">保存</button>
+            <a href="/students" class="btn btn-info">取消</a>
+        </div>
+    </form>
+
+    <div class="alert-info" style="margin-top: 24px;">
+        <strong>对应 SQL 操作：</strong><br>
+        新增 → <code>INSERT INTO student (ID, Name, Sex, Age, Dept, RID) VALUES (%s, %s, %s, %s, %s, %s)</code><br>
+        编辑 → <code>UPDATE student SET Name=%s, Sex=%s, Age=%s, Dept=%s WHERE ID=%s</code><br>
+        <strong>参数化查询</strong>：<code>%s</code> 占位符由 Python 变量填充，防止 SQL 注入。
+    </div>
+</div>
+
+{% endblock %}

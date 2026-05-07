@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DB06 数据库应用系统{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">DB06 数据库应用系统</a>
+            <ul class="nav-menu">
+                <li><a href="/">首页</a></li>
+                <li><a href="/students">学生管理</a></li>
+                <li><a href="/courses">课程管理</a></li>
+                <li><a href="/lab">实验平台</a></li>
+                <li class="nav-dropdown">
+                    <span>教学概念</span>
+                    <ul class="dropdown-menu">
+                        <li><a href="/concepts/embedded-sql">嵌入式 SQL</a></li>
+                        <li><a href="/concepts/middleware">中间件架构</a></li>
+                        <li><a href="/concepts/history">发展历史</a></li>
+                        <li><a href="/concepts/trigger">触发器</a></li>
+                        <li><a href="/homework-guide">作业参考</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>云南民族大学 数学与计算机科学学院 | 第6讲：数据库应用系统 | Web + Flask + MySQL 教学演示</p>
+    </footer>
+</body>
+</html>

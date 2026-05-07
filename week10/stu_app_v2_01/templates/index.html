@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}DB06 数据库应用系统 —— 首页{% endblock %}
+{% block content %}
+
+<div class="card">
+    <h1>第6讲：数据库应用系统</h1>
+    <p>本演示展示一个完整的 <strong>Web 数据库应用系统</strong>的三层架构：表现层（Flask）、中间层（Database 类）、数据层（MySQL）。</p>
+
+    <!-- 三层架构图 -->
+    <h2>系统架构</h2>
+    <div class="arch-grid">
+        <div class="arch-layer">
+            <h3>表现层</h3>
+            <p>Flask Web 框架<br>HTML 模板 + 路由<br>用户交互界面</p>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-layer middle">
+            <h3>中间件层</h3>
+            <p>Database 类<br>统一数据访问接口<br>参数化查询 / 游标</p>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-layer">
+            <h3>数据层</h3>
+            <p>MySQL 数据库<br>DB06 数据库<br>表 / 函数 / 存储过程</p>
+        </div>
+    </div>
+
+    <h2>数据库概况</h2>
+    <table>
+        <thead>
+            <tr><th>表名</th><th>说明</th><th>记录数</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>student</code></td><td>学生信息</td><td>4</td></tr>
+            <tr><td><code>course</code></td><td>课程信息（含先修课自引用）</td><td>7</td></tr>
+            <tr><td><code>student_course</code></td><td>学生选课记录</td><td>5</td></tr>
+            <tr><td><code>student_course_retake</code></td><td>学生重修记录</td><td>0</td></tr>
+        </tbody>
+    </table>
+
+    <h2>教学演示要点</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="concept-section">
+            <h3>嵌入式 SQL</h3>
+            <p>Python 代码中嵌入 SQL 语句。参数化查询（<code>%s</code>）对应"共享变量"概念，cursor 对象对应"SQL 通信区"。</p>
+            <a href="/concepts/embedded-sql" class="btn btn-primary btn-sm">查看讲解</a>
+        </div>
+        <div class="concept-section">
+            <h3>中间件架构</h3>
+            <p>Flask 不直接访问 MySQL，通过 Database 类中转。统一接口屏蔽底层 DBMS 差异。</p>
+            <a href="/concepts/middleware" class="btn btn-primary btn-sm">查看讲解</a>
+        </div>
+        <div class="concept-section">
+            <h3>MySQL 函数与存储过程</h3>
+            <p><code>fn_GetTotalCreditBySID</code> 统计总学分；<code>sp_CourseStat</code> 统计课程修读情况。演示 SQL 编程能力。</p>
+            <a href="/students" class="btn btn-primary btn-sm">学生列表</a>
+            <a href="/courses" class="btn btn-primary btn-sm">课程列表</a>
+        </div>
+        <div class="concept-section">
+            <h3>触发器</h3>
+            <p><code>trg_grade_check</code> — 自动检查选课成绩范围（0-100），演示数据库完整性约束的自动执行机制。</p>
+            <a href="/concepts/trigger" class="btn btn-primary btn-sm">查看讲解</a>
+        </div>
+        <div class="concept-section">
+            <h3>数据管理发展历史</h3>
+            <p>从手工管理到云原生融合，五个发展阶段的核心技术与痛点对比。</p>
+            <a href="/concepts/history" class="btn btn-primary btn-sm">查看讲解</a>
+        </div>
+        <div class="concept-section">
+            <h3>作业参考要点</h3>
+            <p>DB06 作业简答题和分析题的答题思路与要点提示。</p>
+            <a href="/homework-guide" class="btn btn-primary btn-sm">查看参考</a>
+        </div>
+        <div class="concept-section">
+            <h3>实验平台</h3>
+            <p>在线完成实验任务（函数和存储过程），系统自动评测并给出反馈。</p>
+            <a href="/lab" class="btn btn-primary btn-sm">进入实验</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

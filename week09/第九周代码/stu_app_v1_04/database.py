@@ -473,6 +473,13 @@ class Database:
 
     def delete_teacher(self, aid):
         try:
+            # 外键是 ON DELETE RESTRICT，因此先清理依赖该教师的关联记录。
+            self.connection.start_transaction()
+            self.cursor.execute("DELETE FROM teacher_guidance WHERE TeacherAID=%s", (aid,))
+            self.cursor.execute("DELETE FROM teacher_course WHERE TeacherAID=%s", (aid,))
+            self.cursor.execute("DELETE FROM course_leader WHERE LeaderAID=%s", (aid,))
+            self.cursor.execute("DELETE FROM major_leader WHERE LeaderAID=%s", (aid,))
+            self.cursor.execute("DELETE FROM teacher_major WHERE TeacherAID=%s", (aid,))
             self.cursor.execute("DELETE FROM teacher WHERE AID=%s", (aid,))
             self.connection.commit()
             if self.cursor.rowcount > 0:
@@ -482,6 +489,7 @@ class Database:
                 print("❌ 教师不存在")
                 return False
         except Error as e:
+            self.connection.rollback()
             print(f"❌ 删除失败：{e}")
             return False
 

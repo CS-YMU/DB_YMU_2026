@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}作业参考要点 —— DB06{% endblock %}
+{% block content %}
+
+<div class="breadcrumb">
+    <a href="/">首页</a> &raquo; 作业参考要点
+</div>
+
+<div class="card">
+    <h1>DB作业06：数据库应用系统 —— 参考要点</h1>
+    <p>以下为本作业各题的<strong>答题思路与要点提示</strong>，帮助你组织答案。请结合PPT内容和课堂理解，用自己的语言完整作答。</p>
+
+    <h2>一、简答题（每题15分，共60分）</h2>
+
+    <div class="concept-section">
+        <h3>第1题：简述数据库管理技术发展的五个阶段，并说明每个阶段的核心技术与主要痛点。</h3>
+        <p><strong>答题框架：</strong></p>
+        <ul style="margin-left:20px; line-height:2;">
+            <li>按时间顺序列出五个阶段，每个阶段需包含：时间范围、核心技术/存储介质、关键特点、主要痛点</li>
+            <li>可参考<a href="/concepts/history">数据管理发展历史</a>页面的对比表</li>
+            <li><strong>重点：</strong>体现"程序与数据关系"的演变 — 从强绑定到完全分离</li>
+        </ul>
+        <p><strong>要点提示：</strong></p>
+        <table>
+            <thead>
+                <tr><th>阶段</th><th>核心技术</th><th>主要痛点</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>手工管理</td><td>穿孔卡片、磁带</td><td>数据不共享、高度冗余、无OS管理</td></tr>
+                <tr><td>文件系统</td><td>磁盘、索引文件</td><td>独立性差、无原子性、查询弱</td></tr>
+                <tr><td>RDBMS</td><td>关系模型、SQL、ACID</td><td>扩展成本高、非结构化不友好</td></tr>
+                <tr><td>NoSQL/大数据</td><td>键值/文档/列族、Hadoop</td><td>查询弱、缺乏事务、运维复杂</td></tr>
+                <tr><td>云原生融合</td><td>存算分离、湖仓一体</td><td>选型复杂、跨云治理</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="concept-section">
+        <h3>第2题：什么是中间件？在数据库应用系统中使用中间件有什么好处？</h3>
+        <p><strong>定义：</strong>中间件是为应用程序访问各类数据库提供<strong>统一接口</strong>的软件，屏蔽不同DBMS的差异。</p>
+        <p><strong>好处（至少答出3-4点）：</strong></p>
+        <ul style="margin-left:20px; line-height:2;">
+            <li><strong>降低学习成本：</strong>开发者只需学习中间件提供的统一API，无需了解每种DBMS的具体接口</li>
+            <li><strong>降低代码耦合：</strong>SQL代码集中在中间层，应用层只调用方法，便于维护</li>
+            <li><strong>便于DBMS迁移：</strong>从MySQL换到PostgreSQL只需修改中间件层，上层代码不受影响</li>
+            <li><strong>提升安全性：</strong>可统一使用参数化查询防止SQL注入，集中管理连接和事务</li>
+            <li><strong>减少通信量（配合存储过程）：</strong>应用程序不传递SQL代码，只传递过程名和参数</li>
+        </ul>
+        <p><strong>结合本项目：</strong>本项目中的 <code>database.py</code> 就是中间件层，Flask应用通过 <code>Database</code> 类访问MySQL。</p>
+    </div>
+
+    <div class="concept-section">
+        <h3>第3题：嵌入式SQL中，SQL通信区（SQLCA）和共享变量分别起什么作用？</h3>
+        <p><strong>SQLCA（SQL Communication Area）的作用：</strong></p>
+        <ul style="margin-left:20px; line-height:2;">
+            <li>是一个结构体变量（如 <code>struct sqlca</code>），用于<strong>向主语言传递SQL语句的执行状态信息</strong></li>
+            <li>包含：SQL执行成功/失败的状态码（<code>sqlca.sqlcode</code>）、错误信息、影响行数等</li>
+            <li>使主语言能够<strong>根据执行状态控制程序流程</strong>（如判断是否继续FETCH、是否回滚事务）</li>
+        </ul>
+        <p><strong>共享变量的作用：</strong></p>
+        <ul style="margin-left:20px; line-height:2;">
+            <li><strong>双向数据传递的桥梁：</strong>主语言变量与SQL语句之间共享数据</li>
+            <li><strong>主语言 → SQL：</strong>将应用程序中的参数传递给SQL语句（如WHERE条件值、INSERT的值）</li>
+            <li><strong>SQL → 主语言：</strong>将SQL查询结果（如SELECT返回的字段值）传递给主语言进一步处理</li>
+            <li>在C程序中用 <code>EXEC SQL BEGIN/END DECLARE SECTION</code> 声明，SQL中通过 <code>:变量名</code> 引用</li>
+        </ul>
+        <p><strong>两者关系：</strong>共享变量传递"业务数据"，SQLCA传递"执行状态数据"，缺一不可。</p>
+    </div>
+
+    <div class="concept-section">
+        <h3>第4题：存储过程相比嵌入式SQL有哪些优点？</h3>
+        <p><strong>答题框架（至少4点）：</strong></p>
+        <ul style="margin-left:20px; line-height:2;">
+            <li><strong>运行效率高：</strong>存储过程经编译和优化后以二进制形式存储在服务器，可直接执行；而嵌入式SQL需要先编译再执行</li>
+            <li><strong>降低通信量：</strong>不传递SQL代码，只传递过程名和参数，减少网络传输开销</li>
+            <li><strong>提升安全性：</strong>应用程序中无嵌入式SQL代码，SQL代码不外泄，避免SQL注入攻击</li>
+            <li><strong>降低耦合性：</strong>用户交互（应用层）与数据处理（存储过程）分离，各自独立优化</li>
+            <li><strong>便于复用：</strong>多个应用可共享同一个存储过程，避免代码重复</li>
+            <li><strong>便于维护：</strong>DBA可独立优化存储过程，无需修改应用代码</li>
+        </ul>
+    </div>
+
+    <h2>二、分析题（共40分）</h2>
+
+    <div class="concept-section">
+        <h3>第1题（20分）：程序中定义了一个游标SX，游标的作用是什么？为什么需要游标？</h3>
+
+        <p><strong>游标的作用：</strong></p>
+        <ul style="margin-left:20px; line-height:2;">
+            <li>游标是<strong>存放SQL查询结果集的缓冲区</strong>，相当于一个指向结果集中某条记录的指针</li>
+            <li>通过游标，应用程序可以<strong>逐条访问</strong>查询结果中的记录</li>
+            <li>游标支持一系列操作：声明（DECLARE）、打开（OPEN）、读取（FETCH）、关闭（CLOSE）</li>
+        </ul>
+
+        <p><strong>为什么需要游标？</strong></p>
+        <ul style="margin-left:20px; line-height:2;">
+            <li><strong>SQL是集合操作语言：</strong>一条SELECT语句返回的是一个集合（多行数据），一次操作面向整个集合</li>
+            <li><strong>宿主语言是过程操作语言：</strong>C、Python等高级语言一次只能处理一条记录，需要循环逐行处理</li>
+            <li><strong>"阻抗不匹配"问题：</strong>SQL的集合操作方式与宿主语言的过程处理方式之间存在不匹配</li>
+            <li><strong>游标作为桥梁：</strong>将集合结果逐条传递给宿主语言处理，解决了上述不匹配问题</li>
+            <li>类比：游标就像数组的索引指针，<code>FETCH</code> 相当于 <code>array[i++]</code></li>
+        </ul>
+
+        <p><strong>结合PPT代码：</strong></p>
+        <pre>EXEC SQL DECLARE SX CURSOR FOR
+    SELECT ID, Name, Sex, Age FROM Student WHERE Dept = :S_DeptName;
+EXEC SQL OPEN SX;        -- 打开游标，执行查询，指针指向第一行前
+while(1) {
+    EXEC SQL FETCH SX INTO :S_SID, :S_SName, :S_SSex, :S_SAge;
+    // 每次FETCH将游标指向的当前行数据读入共享变量
+}</pre>
+    </div>
+
+    <div class="concept-section">
+        <h3>第2题（20分）：EXEC SQL FETCH SX INTO ... 语句完成了什么功能？程序如何判断FETCH是否成功？</h3>
+
+        <p><strong>FETCH语句的功能：</strong></p>
+        <ul style="margin-left:20px; line-height:2;">
+            <li><strong>定位：</strong>将游标指针指向结果集的"当前行"（首次FETCH指向第一行，之后每次自动下移一行）</li>
+            <li><strong>读取：</strong>将当前行的各列数据读取到 <code>INTO</code> 后面指定的共享变量中</li>
+            <li><strong>传递：</strong>使宿主语言（C程序）能够获得SQL查询结果的具体数据，进行后续处理</li>
+        </ul>
+
+        <p><strong>判断FETCH是否成功：</strong></p>
+        <ul style="margin-left:20px; line-height:2;">
+            <li>通过检查 <strong>SQL通信区（SQLCA）</strong> 的状态码来判断</li>
+            <li>具体代码：<code>if (sqlca.sqlcode != 0) break;</code></li>
+            <li><strong>成功：</strong><code>sqlca.sqlcode == 0</code>，表示成功读取一行数据，继续循环处理</li>
+            <li><strong>失败/结束：</strong><code>sqlca.sqlcode != 0</code>，表示：
+                <ul>
+                    <li>结果集已经遍历完毕（所有记录已处理完）</li>
+                    <li>或者执行过程中发生了错误</li>
+                </ul>
+            </li>
+            <li>程序通过 <code>break</code> 跳出循环，结束游标处理</li>
+        </ul>
+
+        <p><strong>完整处理流程：</strong></p>
+        <pre>EXEC SQL OPEN SX;           // 1. 打开游标（执行SQL查询）
+while(1) {                  // 2. 循环逐行处理
+    EXEC SQL FETCH SX INTO ...;  // 3. 读取当前行到共享变量
+    if (sqlca.sqlcode != 0)      // 4. 检查SQLCA状态
+        break;                   //    非0 = 无数据或出错，退出
+    // 5. 处理数据（输出、修改等）
+}
+EXEC SQL CLOSE SX;          // 6. 关闭游标，释放资源</pre>
+    </div>
+
+    <div class="alert-info">
+        <strong>答题建议：</strong>分析题要结合PPT中的C程序代码具体作答，不要只写概念定义。
+        引用代码片段并加以说明，会让答案更有说服力。
+    </div>
+</div>
+
+{% endblock %}

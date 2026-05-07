@@ -8,13 +8,7 @@
 数据库应用设计，但不会额外创建业务基础表。
 """
 from database import Database
-
-DB_CONFIG = {
-    'host': 'localhost',
-    'database': 'dbsample',
-    'user': 'dylan',
-    'password': 'P@ssw0rd'
-}
+from config import DB_CONFIG
 
 
 def init_advanced_objects():

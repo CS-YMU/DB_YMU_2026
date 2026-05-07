@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}触发器 —— DB06{% endblock %}
+{% block content %}
+
+<div class="breadcrumb">
+    <a href="/">首页</a> &raquo; 触发器
+</div>
+
+<div class="card">
+    <h1>触发器（Trigger）</h1>
+    <p>触发器是实现数据库<strong>完整性约束自动执行</strong>的 SQL 程序。当特定事件（INSERT、UPDATE、DELETE）发生时，数据库自动触发执行预定义的代码逻辑。</p>
+
+    <h2>触发器的核心概念</h2>
+    <table>
+        <thead>
+            <tr><th>要素</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>触发时机</strong></td>
+                <td>BEFORE（操作前）/ AFTER（操作后）</td>
+            </tr>
+            <tr>
+                <td><strong>触发事件</strong></td>
+                <td>INSERT、UPDATE、DELETE</td>
+            </tr>
+            <tr>
+                <td><strong>作用范围</strong></td>
+                <td>FOR EACH ROW（行级）/ FOR EACH STATEMENT（语句级）</td>
+            </tr>
+            <tr>
+                <td><strong>特殊变量</strong></td>
+                <td>NEW — 新数据（INSERT/UPDATE）；OLD — 旧数据（UPDATE/DELETE）</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>本项目中的触发器：trg_grade_check</h2>
+    <div class="concept-section">
+        <h3>功能说明</h3>
+        <p>在 <code>student_course</code> 表执行 <strong>INSERT</strong> 操作前，自动检查成绩是否在 <strong>0-100</strong> 范围内。如果成绩不合法，阻止插入并抛出错误。</p>
+
+        <h3>源码</h3>
+        <pre>
+CREATE TRIGGER trg_grade_check
+BEFORE INSERT ON student_course
+FOR EACH ROW
+BEGIN
+    IF NEW.Grade IS NOT NULL AND (NEW.Grade &lt; 0 OR NEW.Grade &gt; 100) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = '成绩必须在 0-100 之间';
+    END IF;
+END</pre>
+
+        <h3>关键点解析</h3>
+        <ul style="margin-left:20px; line-height:2;">
+            <li><code>BEFORE INSERT</code> — 在数据真正插入表<strong>之前</strong>执行检查</li>
+            <li><code>FOR EACH ROW</code> — 每插入一行触发一次</li>
+            <li><code>NEW.Grade</code> — 访问即将插入的新行的 Grade 字段值</li>
+            <li><code>SIGNAL SQLSTATE '45000'</code> — 抛出用户自定义错误，阻止不合法操作</li>
+        </ul>
+    </div>
+
+    <h2>触发器 vs 应用程序校验</h2>
+    <table>
+        <thead>
+            <tr><th>对比维度</th><th>应用程序层校验</th><th>数据库触发器校验</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>可靠性</strong></td>
+                <td>绕过应用直接操作数据库时失效</td>
+                <td>无论通过什么方式操作数据，都会强制执行</td>
+            </tr>
+            <tr>
+                <td><strong>性能</strong></td>
+                <td>数据已传输到应用层才发现错误</td>
+                <td>在数据库层即时拦截，减少网络往返</td>
+            </tr>
+            <tr>
+                <td><strong>维护</strong></td>
+                <td>规则分散在各应用代码中</td>
+                <td>规则集中存储在数据库中，一处修改全局生效</td>
+            </tr>
+            <tr>
+                <td><strong>灵活性</strong></td>
+                <td>可以访问外部服务，逻辑更灵活</td>
+                <td>只能在数据库内部操作，受限于SQL能力</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>触发器的适用场景</h2>
+    <ul style="margin-left:20px; line-height:2;">
+        <li><strong>数据完整性约束</strong>：如成绩范围检查、日期合理性检查</li>
+        <li><strong>审计日志</strong>：自动记录谁在什么时间修改了什么数据</li>
+        <li><strong>级联更新</strong>：主表数据变更时自动同步相关表</li>
+        <li><strong>派生字段计算</strong>：自动计算并存储冗余字段（如总数量、平均值）</li>
+    </ul>
+
+    <div class="alert-info">
+        <strong>注意：</strong>触发器虽然强大，但过度使用会导致数据库逻辑隐蔽、调试困难。建议在<strong>数据完整性约束</strong>和<strong>审计</strong>场景使用，复杂业务逻辑仍应放在应用层或存储过程中。
+    </div>
+</div>
+
+{% endblock %}
