@@ -19,6 +19,29 @@ conda activate db06
 pip install -r requirements.txt
 ```
 
+### 3. 配置数据库连接（**必须修改**）
+
+打开 `config.py`，把 `user` 和 `password` 改成**你本机 MySQL 实际的账号和密码**：
+
+```python
+DB_CONFIG = {
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'user': os.getenv('DB_USER', 'dylan'),         # ← 改成你的MySQL用户名（如 root）
+    'password': os.getenv('DB_PASSWORD', 'P@ssw0rd'),  # ← 改成你的MySQL密码
+    'database': os.getenv('DB_DATABASE', 'DB06'),
+    ...
+}
+```
+
+> ⚠️ 默认值 `dylan` / `P@ssw0rd` 是老师本机的账号，学生**必须改成自己机器上的 MySQL 账号**，否则 `init_db.py` 会报 `Access denied for user`。
+
+也可以不改文件，用环境变量覆盖（Windows PowerShell 示例）：
+```powershell
+$env:DB_USER='root'
+$env:DB_PASSWORD='你的密码'
+python init_db.py
+```
+
 ---
 
 ## 系统介绍
@@ -73,10 +96,10 @@ python init_db.py
 ============================================================
 DB06 数据库应用系统 —— 数据库初始化
 ============================================================
-SQL 文件路径: ../DB06数据库应用系统260504/dbsc.sql
+SQL 文件路径: /<your_path>/stu_app_v2_01/dbsc.sql
 正在创建数据库 DB06...
 数据库 DB06 创建成功
-正在执行 SQL 文件: ../DB06数据库应用系统260504/dbsc.sql
+正在执行 SQL 文件: /<your_path>/stu_app_v2_01/dbsc.sql
 SQL 文件执行完成
 数据库连接成功: localhost/DB06
 函数 fn_GetTotalCreditBySID 创建完成
@@ -197,7 +220,11 @@ conda activate db06
 pip install -r requirements.txt
 ```
 
-### 2. 初始化数据库
+### 2. 修改数据库连接配置
+
+打开 `config.py`，把 `user` 和 `password` 改成你本机 MySQL 的账号密码（默认 `dylan` / `P@ssw0rd` 是老师本机的，**必须改**）。详见上方「环境配置 → 3. 配置数据库连接」。
+
+### 3. 初始化数据库
 
 ```bash
 python init_db.py
@@ -210,27 +237,27 @@ python init_db.py
 触发器 trg_grade_check 创建完成
 ```
 
-### 3. 启动应用
+### 4. 启动应用
 
 ```bash
 flask run --debug --port 8080
 ```
 
-### 4. 访问并验证
+### 5. 访问并验证
 
 打开浏览器访问 http://localhost:8080
 
 - 点击 **学生列表**：查看学生及其总学分（调用了 fn_GetTotalCreditBySID 函数）
 - 点击 **课程统计**：查看课程的平均分、最高分等（调用了 sp_CourseStat 存储过程）
 
-### 5. 完成作业评测
+### 6. 完成作业评测
 
 1. 访问 http://localhost:8080/lab/task1 （任务1：自定义函数）
 2. 访问 http://localhost:8080/lab/task2 （任务2：存储过程）
 3. 在编辑器中输入对应的 SQL 语句
 4. 点击提交，系统自动判分
 
-### 6. 验证函数/存储过程正确性
+### 7. 验证函数/存储过程正确性
 
 也可以在 MySQL 客户端直接验证：
 
@@ -291,11 +318,28 @@ conda activate db06
 
 ### Q: 启动应用后访问页面报错连接数据库
 
-A: 检查 config.py 中的数据库配置是否正确：
-- host: localhost
-- user: dylan
-- password: P@ssw0rd
-- database: DB06
+A: 检查 `config.py` 中的数据库配置，把 `user` / `password` 改成你本机 MySQL 实际的账号和密码（默认是老师本机的 `dylan` / `P@ssw0rd`，学生需要改）：
+
+```python
+DB_CONFIG = {
+    'host': 'localhost',
+    'user': '你的MySQL用户名',     # 例如 root
+    'password': '你的MySQL密码',
+    'database': 'DB06',
+    ...
+}
+```
+
+也可以通过环境变量覆盖（无需改文件）：
+```bash
+set DB_USER=root          # Windows
+set DB_PASSWORD=你的密码
+python init_db.py
+```
+
+### Q: 运行 init_db.py 报 `FileNotFoundError: [WinError 2] 系统找不到指定的文件`
+
+A: 旧版 `init_db.py` 依赖 `mysql.exe` 命令行工具，当前版本已改用 `mysql-connector-python` 直接连接，不再需要把 mysql CLI 加进 PATH。如果你仍看到该报错，说明用的是旧版脚本，请重新解压最新 zip。
 
 ### Q: 任务提交后显示语法错误但 SQL 在客户端可以执行
 
