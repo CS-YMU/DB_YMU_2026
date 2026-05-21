@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DB07 关系数据库规范化设计教学系统</title>
+  <link rel="stylesheet" href="static/styles.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="mark">DB07</span>
+      <div>
+        <strong>规范化设计</strong>
+        <small>交互式教学系统</small>
+      </div>
+    </div>
+    <nav id="topicNav" class="topic-nav"></nav>
+    <button id="caseLibBtn" class="case-lib-btn">教学案例库（10个）</button>
+    <div class="progress-box">
+      <div class="progress-title">课堂进度</div>
+      <div class="progress-track"><span id="progressBar"></span></div>
+      <div id="progressText" class="progress-text">0 / 5 个主题</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1>关系数据库规范化设计理论</h1>
+        <p>涵盖课件 7.1~7.6 全部内容：函数依赖 → 闭包/候选键 → 模式分解 → 1NF~5NF</p>
+        <p id="dbStatus" class="db-status">正在检查数据库连接...</p>
+      </div>
+      <div class="actions">
+        <button id="teacherModeBtn" class="icon-btn" title="切换教师提示">讲</button>
+        <button id="resetBtn" class="icon-btn" title="重置进度">↺</button>
+      </div>
+    </header>
+
+    <section id="overview" class="overview"></section>
+
+    <section class="workspace">
+      <article id="lessonPanel" class="lesson-panel"></article>
+      <aside class="tool-panel">
+        <div class="tabs" id="toolTabs">
+          <button class="tab active" data-tab="quiz">练习</button>
+          <button class="tab" data-tab="closure">闭包</button>
+          <button class="tab" data-tab="keys">候选键</button>
+          <button class="tab" data-tab="mincover">最小覆盖</button>
+          <button class="tab" data-tab="normform">范式检查</button>
+          <button class="tab" data-tab="chase">Chase</button>
+        </div>
+
+        <!-- 练习 Tab -->
+        <div id="quizTab" class="tab-page active">
+          <h2>随堂练习</h2>
+          <p class="muted" id="quizSource">正在加载练习题...</p>
+          <div class="student-row">
+            <label for="studentName">学生姓名</label>
+            <input id="studentName" value="匿名学生" placeholder="输入姓名后作答会记录到数据库">
+          </div>
+          <div id="exerciseList" class="exercise-list"></div>
+        </div>
+
+        <!-- 闭包 Tab -->
+        <div id="closureTab" class="tab-page">
+          <h2>属性闭包计算器</h2>
+          <p class="muted">输入属性集 X 和函数依赖集 F，计算 X⁺ 并展示每步推导过程。</p>
+          <div class="preset-group" id="closurePresets"></div>
+          <label>属性集 X</label>
+          <input id="closureX" value="A" placeholder="例如 A 或 AC">
+          <label>函数依赖集（每行一个，格式：左部→右部）</label>
+          <textarea id="closureFds" rows="4" placeholder="A→B&#10;B→C&#10;C→D&#10;CD→E&#10;E→F"></textarea>
+          <button id="closureBtn" class="primary">计算闭包</button>
+          <div id="closureResult" class="result-box"></div>
+        </div>
+
+        <!-- 候选键 Tab -->
+        <div id="keysTab" class="tab-page">
+          <h2>候选键求解器</h2>
+          <p class="muted">输入全部属性和 FD 集，自动找出所有候选键。</p>
+          <div class="preset-group" id="keysPresets"></div>
+          <label>全部属性（逗号分隔）</label>
+          <input id="keysAttrs" value="A,B,C,D,E,F" placeholder="A,B,C,D,E">
+          <label>函数依赖集</label>
+          <textarea id="keysFds" rows="4" placeholder="A→B&#10;B→C&#10;C→D&#10;CD→E&#10;E→F"></textarea>
+          <button id="keysBtn" class="primary">求解候选键</button>
+          <div id="keysResult" class="result-box"></div>
+        </div>
+
+        <!-- 最小覆盖 Tab -->
+        <div id="mincoverTab" class="tab-page">
+          <h2>最小依赖集计算器</h2>
+          <p class="muted">分三步展示：右部单属性化 → 消冗余依赖 → 消左部冗余属性。</p>
+          <div class="preset-group" id="mincoverPresets"></div>
+          <label>函数依赖集</label>
+          <textarea id="mincoverFds" rows="4" placeholder="A→BC&#10;B→C&#10;A→B&#10;AB→C"></textarea>
+          <button id="mincoverBtn" class="primary">计算最小依赖集</button>
+          <div id="mincoverResult" class="result-box"></div>
+        </div>
+
+        <!-- 范式检查 Tab -->
+        <div id="normformTab" class="tab-page">
+          <h2>范式检查器</h2>
+          <p class="muted">输入关系模式和 FD 集，判断最高满足第几范式（1NF~BCNF），指出违规依赖。</p>
+          <div class="preset-group" id="normformPresets"></div>
+          <label>全部属性（逗号分隔）</label>
+          <input id="normformAttrs" value="A,B,C" placeholder="A,B,C">
+          <label>函数依赖集</label>
+          <textarea id="normformFds" rows="4" placeholder="A→B&#10;B→C"></textarea>
+          <button id="normformBtn" class="primary">检查范式</button>
+          <div id="normformResult" class="result-box"></div>
+        </div>
+
+        <!-- Chase Tab -->
+        <div id="chaseTab" class="tab-page">
+          <h2>Chase 过程演示器</h2>
+          <p class="muted">输入属性集、FD 集和分解方案，通过 Chase 过程算法判断无损连接。</p>
+          <div class="preset-group" id="chasePresets"></div>
+          <label>全部属性（逗号分隔）</label>
+          <input id="chaseAttrs" value="A,B,C,D" placeholder="A,B,C,D">
+          <label>函数依赖集</label>
+          <textarea id="chaseFds" rows="3" placeholder="B→A&#10;C→D"></textarea>
+          <label>分解方案（每行一个，属性连写）</label>
+          <textarea id="chaseDecomp" rows="3" placeholder="AB&#10;BC&#10;CD"></textarea>
+          <button id="chaseBtn" class="primary">执行 Chase</button>
+          <div id="chaseResult" class="result-box"></div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <!-- 案例库弹窗 -->
+  <div id="caseModal" class="modal hidden">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>教学案例库（10个经典案例）</h2>
+        <button id="closeCaseModal" class="icon-btn">✕</button>
+      </div>
+      <div class="case-grid" id="caseGrid"></div>
+      <div id="caseDetail" class="case-detail hidden">
+        <button id="backToCaseList" class="back-btn">← 返回案例列表</button>
+        <div id="caseDetailContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="static/app.js"></script>
+</body>
+</html>
